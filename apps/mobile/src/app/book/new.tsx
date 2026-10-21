@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { Linking, Pressable, Text, TextInput, View } from 'react-native';
+import { Animated, Linking, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Button, Card, Chip, Eyebrow, Field, Page, PageTitle, StatusMessage } from '@/components/ui';
 import { createBook, type BookStatus } from '@/data/books';
 import { searchCatalog, type CatalogBook } from '@/data/catalog';
+import { BookCover, coverFromIsbn } from '@/components/BookCover';
 import { colors, fonts } from '@/design/tokens';
 
 const statusOptions: { key: BookStatus; label: string }[] = [
   { key: 'reading', label: 'Reading' },
   { key: 'want_to_read', label: 'Want to read' },
   { key: 'finished', label: 'Finished' },
+  { key: 'paused', label: 'Paused' },
 ];
 
 function parseCurrentPage(value: string): number | null {
@@ -33,6 +35,8 @@ export default function NewBookScreen() {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [currentPage, setCurrentPage] = useState('');
+  const [pageCount, setPageCount] = useState('');
+  const [isbn, setIsbn] = useState('');
   const [status, setStatus] = useState<BookStatus>('reading');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -42,6 +46,14 @@ export default function NewBookScreen() {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState('');
   const [addingCatalogKey, setAddingCatalogKey] = useState('');
+  const [addedTitle, setAddedTitle] = useState('');
+  const [addedMotion] = useState(() => new Animated.Value(0.82));
+
+  function finishAddingBook(id: string, bookTitle: string) {
+    setAddedTitle(bookTitle);
+    Animated.spring(addedMotion, { toValue: 1, stiffness: 240, damping: 15, useNativeDriver: true }).start();
+    setTimeout(() => router.replace({ pathname: '/book/[id]', params: { id } }), 760);
+  }
 
   async function saveBook() {
     if (!title.trim()) {
@@ -54,6 +66,15 @@ export default function NewBookScreen() {
       setError('Enter the current page as a whole number of zero or more.');
       return;
     }
+    const parsedPageCount = pageCount.trim() ? Number(pageCount) : null;
+    if (parsedPageCount !== null && (!Number.isSafeInteger(parsedPageCount) || parsedPageCount < 1)) {
+      setError('Total pages must be a positive whole number, or leave it blank.');
+      return;
+    }
+    if (parsedPageCount !== null && parsedCurrentPage > parsedPageCount) {
+      setError('Current page cannot be greater than the total page count.');
+      return;
+    }
 
     setSaving(true);
     setError('');
@@ -63,8 +84,11 @@ export default function NewBookScreen() {
         author,
         status,
         currentPage: parsedCurrentPage,
+        pageCount: parsedPageCount,
+        isbn,
+        coverUrl: coverFromIsbn(isbn),
       });
-      router.replace({ pathname: '/book/[id]', params: { id } });
+      finishAddingBook(id, title.trim());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'This book could not be saved.');
       setSaving(false);
@@ -105,8 +129,12 @@ export default function NewBookScreen() {
         status,
         currentPage: parsedCurrentPage,
         pageCount: book.pageCount,
+        catalogId: book.key,
+        isbn: book.isbn,
+        coverUrl: book.coverUrl,
+        publishedYear: book.firstPublishYear,
       });
-      router.replace({ pathname: '/book/[id]', params: { id } });
+      finishAddingBook(id, book.title);
     } catch (cause) {
       setCatalogError(cause instanceof Error ? cause.message : 'This book could not be saved.');
       setAddingCatalogKey('');
@@ -146,6 +174,14 @@ export default function NewBookScreen() {
 
       <Card style={{ gap: 9 }}>
         <Eyebrow>Reading position</Eyebrow>
+        <Field
+          label="Total pages (optional)"
+          keyboardType="number-pad"
+          onChangeText={setPageCount}
+          placeholder="Catalog total fills this in"
+          returnKeyType="done"
+          value={pageCount}
+        />
         <Field
           label="Current page (optional)"
           keyboardType="number-pad"
@@ -215,15 +251,17 @@ export default function NewBookScreen() {
               opacity: pressed ? 0.75 : 1,
             })}
           >
+            <BookCover title={book.title} uri={book.coverUrl} width={42} height={58} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 16 }}>
                 {book.title}
               </Text>
               <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>
                 {book.author || 'Author not listed'}
-                {book.firstPublishYear ? ` · First published ${book.firstPublishYear}` : ''}
+                {book.firstPublishYear ? ` · ${book.firstPublishYear}` : ''}
                 {book.pageCount ? ` · ${book.pageCount} pages` : ''}
               </Text>
+              {book.isbn ? <Text style={{ color: colors.textMuted, fontFamily: fonts.mono, fontSize: 9 }}>ISBN {book.isbn}</Text> : null}
             </View>
             <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>
               {addingCatalogKey === book.key ? 'Adding…' : 'Add'}
@@ -271,7 +309,31 @@ export default function NewBookScreen() {
           returnKeyType="done"
           value={author}
         />
+        <Field
+          label="ISBN (optional)"
+          autoCapitalize="characters"
+          onChangeText={setIsbn}
+          placeholder="ISBN-10 or ISBN-13"
+          returnKeyType="done"
+          value={isbn}
+        />
       </View>
+
+      {addedTitle ? (
+        <Animated.View
+          accessible
+          accessibilityLiveRegion="polite"
+          style={{ opacity: addedMotion, transform: [{ scale: addedMotion }], borderRadius: 16, borderWidth: 1, borderColor: colors.accent, backgroundColor: colors.accentSoft, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+        >
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.accentStrong, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: colors.white, fontFamily: fonts.body, fontSize: 18, fontWeight: '700' }}>✓</Text>
+          </View>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={{ color: colors.accentLight, fontFamily: fonts.body, fontSize: 11, fontWeight: '700', letterSpacing: 1 }}>ADDED TO YOUR LIBRARY</Text>
+            <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 16 }}>{addedTitle}</Text>
+          </View>
+        </Animated.View>
+      ) : null}
 
       <View style={{ gap: 11, marginTop: 5 }}>
         <Button disabled={saving} onPress={() => void saveBook()}>

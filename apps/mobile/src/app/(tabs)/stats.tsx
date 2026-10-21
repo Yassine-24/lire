@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { getReadingSegments, type ReadingSegment } from '@/data/books';
-import { Button, Card, Chip, Eyebrow, Page, PageTitle, StatusMessage } from '@/components/ui';
+import { getCompletedSessionCount, getCurrentSession, getReadingSegments, listBooks, type Book, type ReadingSegment } from '@/data/books';
+import { Button, Card, Chip, Eyebrow, Page, PageTitle, SectionTitle, StatusMessage } from '@/components/ui';
 import { colors, fonts } from '@/design/tokens';
-import { formatDuration, localDayKey, secondsByLocalDay, shiftLocalDay, weekStart } from '@/domain/time';
+import { formatDuration, localDayKey, secondsByLocalDay, shiftLocalDay, sumSegmentSeconds, weekStart } from '@/domain/time';
 
 type Period = 'day' | 'week' | 'month';
 type BarPoint = { label: string; seconds: number };
@@ -52,13 +52,22 @@ function periodTitle(period: Period, now: Date): string {
 export default function StatsScreen() {
   const db = useSQLiteContext();
   const [segments, setSegments] = useState<ReadingSegment[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [completedSessions, setCompletedSessions] = useState(0);
+  const [hasActiveSession, setHasActiveSession] = useState(false);
   const [period, setPeriod] = useState<Period>('week');
   const [now, setNow] = useState(new Date());
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     try {
-      setSegments(await getReadingSegments(db));
+      const [nextSegments, nextBooks, nextCompletedSessions, nextSession] = await Promise.all([
+        getReadingSegments(db), listBooks(db), getCompletedSessionCount(db), getCurrentSession(db),
+      ]);
+      setSegments(nextSegments);
+      setBooks(nextBooks);
+      setCompletedSessions(nextCompletedSessions);
+      setHasActiveSession(Boolean(nextSession));
       setNow(new Date());
       setError('');
     } catch {
@@ -83,6 +92,16 @@ export default function StatsScreen() {
   const activeDays = points.filter((point) => point.seconds > 0).length;
   const bestDay = points.reduce((best, point) => Math.max(best, point.seconds), 0);
   const max = Math.max(1, ...points.map((point) => point.seconds));
+  const lifetimeSeconds = Object.values(totals).reduce((sum, seconds) => sum + seconds, 0);
+  const lifetimeDays = Object.values(totals).filter((seconds) => seconds > 0).length;
+  const sessionCount = completedSessions + (hasActiveSession ? 1 : 0);
+  const bookTotals = books
+    .map((book) => ({
+      book,
+      seconds: sumSegmentSeconds(segments.filter((segment) => segment.book_id === book.id), now),
+    }))
+    .filter((item) => item.seconds > 0)
+    .sort((a, b) => b.seconds - a.seconds);
 
   return (
     <Page>
@@ -162,6 +181,43 @@ export default function StatsScreen() {
         <Button variant="outline" onPress={() => router.push('/backup')}>
           Back up or restore data
         </Button>
+      </Card>
+
+      <Card style={{ gap: 12 }}>
+        <SectionTitle>Reading life</SectionTitle>
+        <View style={{ flexDirection: 'row', gap: 9 }}>
+          <View style={{ flex: 1, borderRadius: 14, padding: 13, backgroundColor: colors.surfaceRaised, gap: 5 }}>
+            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 10, letterSpacing: 1 }}>ALL TIME</Text>
+            <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 19 }}>{formatDuration(lifetimeSeconds)}</Text>
+          </View>
+          <View style={{ flex: 1, borderRadius: 14, padding: 13, backgroundColor: colors.surfaceRaised, gap: 5 }}>
+            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 10, letterSpacing: 1 }}>SESSIONS</Text>
+            <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 19 }}>{sessionCount}</Text>
+          </View>
+          <View style={{ flex: 1, borderRadius: 14, padding: 13, backgroundColor: colors.surfaceRaised, gap: 5 }}>
+            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 10, letterSpacing: 1 }}>READING DAYS</Text>
+            <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 19 }}>{lifetimeDays}</Text>
+          </View>
+        </View>
+      </Card>
+
+      <Card style={{ gap: 12 }}>
+        <SectionTitle detail={`${bookTotals.length} ${bookTotals.length === 1 ? 'book' : 'books'}`}>Time by book</SectionTitle>
+        {bookTotals.length === 0 ? (
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }}>
+            Finished reading time will appear here as you log sessions.
+          </Text>
+        ) : bookTotals.slice(0, 8).map(({ book, seconds }) => (
+          <View key={book.id} style={{ gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.body, fontSize: 13 }}>{book.title}</Text>
+              <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>{formatDuration(seconds)}</Text>
+            </View>
+            <View style={{ height: 5, borderRadius: 8, backgroundColor: colors.border, overflow: 'hidden' }}>
+              <View style={{ height: 5, width: `${Math.max(3, (seconds / bookTotals[0].seconds) * 100)}%`, backgroundColor: colors.accent }} />
+            </View>
+          </View>
+        ))}
       </Card>
     </Page>
   );

@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { getBook, getBookSessionHistory, getCurrentSession, updateBookProgress, updateBookStatus, type Book, type BookStatus, type CurrentSession, type SessionHistoryItem } from '@/data/books';
-import { finishSession, pauseSession, resumeSession, startSession } from '@/data/reading';
+import { getBook, getBookSessionHistory, getCurrentSession, updateBookDetails, updateBookProgress, updateBookStatus, type Book, type BookStatus, type CurrentSession, type SessionHistoryItem } from '@/data/books';
+import { correctSessionDuration, finishSession, pauseSession, resumeSession, startSession } from '@/data/reading';
 import { Button, Card, Chip, Eyebrow, Field, Page, PageTitle, SectionTitle, StatusMessage } from '@/components/ui';
+import { BookCover, coverFromIsbn } from '@/components/BookCover';
 import { colors, fonts } from '@/design/tokens';
-import { formatDuration, sumSegmentSeconds } from '@/domain/time';
+import { calendarDaysInclusive, formatDuration, localDateInput, sumSegmentSeconds } from '@/domain/time';
 
 const statusOptions: { key: BookStatus; label: string }[] = [
   { key: 'reading', label: 'Reading' },
   { key: 'want_to_read', label: 'Want to read' },
   { key: 'finished', label: 'Finished' },
+  { key: 'paused', label: 'Paused' },
 ];
 
 function returnToPreviousScreen() {
@@ -35,8 +37,19 @@ export default function BookDetailScreen() {
   const [busy, setBusy] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPageDraft, setCurrentPageDraft] = useState('0');
+  const [pageCountDraft, setPageCountDraft] = useState('');
   const [progressSaving, setProgressSaving] = useState(false);
   const [progressMessage, setProgressMessage] = useState('');
+  const [titleDraft, setTitleDraft] = useState('');
+  const [authorDraft, setAuthorDraft] = useState('');
+  const [isbnDraft, setIsbnDraft] = useState('');
+  const [startedDateDraft, setStartedDateDraft] = useState('');
+  const [finishedDateDraft, setFinishedDateDraft] = useState('');
+  const [ratingDraft, setRatingDraft] = useState('');
+  const [notesDraft, setNotesDraft] = useState('');
+  const [detailsMessage, setDetailsMessage] = useState('');
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [sessionMinutesDraft, setSessionMinutesDraft] = useState('');
 
   const load = useCallback(async () => {
     if (!id) {
@@ -49,7 +62,17 @@ export default function BookDetailScreen() {
       getBookSessionHistory(db, id),
     ]);
     setBook(nextBook);
-    if (nextBook) setCurrentPageDraft(String(nextBook.current_page));
+    if (nextBook) {
+      setCurrentPageDraft(String(nextBook.current_page));
+      setPageCountDraft(nextBook.page_count === null ? '' : String(nextBook.page_count));
+      setTitleDraft(nextBook.title);
+      setAuthorDraft(nextBook.author ?? '');
+      setIsbnDraft(nextBook.isbn ?? '');
+      setStartedDateDraft(localDateInput(nextBook.started_at));
+      setFinishedDateDraft(localDateInput(nextBook.finished_at));
+      setRatingDraft(nextBook.rating === null ? '' : String(nextBook.rating));
+      setNotesDraft(nextBook.notes ?? '');
+    }
     setSession(nextSession);
     setHistory(nextHistory);
     setNow(new Date());
@@ -109,12 +132,17 @@ export default function BookDetailScreen() {
   async function saveProgress() {
     if (!book) return;
     const currentPage = currentPageDraft.trim() ? Number(currentPageDraft) : 0;
+    const pageCount = pageCountDraft.trim() ? Number(pageCountDraft) : null;
     if (!Number.isSafeInteger(currentPage) || currentPage < 0) {
       setError('Current page must be a whole number of zero or more.');
       return;
     }
-    if (book.page_count !== null && currentPage > book.page_count) {
-      setError('Current page cannot be greater than the page total from Open Library.');
+    if (pageCount !== null && (!Number.isSafeInteger(pageCount) || pageCount < 1)) {
+      setError('Total pages must be a positive whole number, or leave it blank.');
+      return;
+    }
+    if (pageCount !== null && currentPage > pageCount) {
+      setError('Current page cannot be greater than the total page count.');
       return;
     }
 
@@ -122,13 +150,55 @@ export default function BookDetailScreen() {
     setError('');
     setProgressMessage('');
     try {
-      await updateBookProgress(db, book.id, { currentPage, pageCount: book.page_count });
+      await updateBookProgress(db, book.id, { currentPage, pageCount });
       await load();
       setProgressMessage('Reading position saved.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Reading position could not be saved.');
     } finally {
       setProgressSaving(false);
+    }
+  }
+
+  async function saveBookDetails() {
+    if (!book) return;
+    setError('');
+    setDetailsMessage('');
+    const rating = ratingDraft.trim() ? Number(ratingDraft) : null;
+    if (rating !== null && (!Number.isSafeInteger(rating) || rating < 1 || rating > 5)) {
+      setError('Rating must be a whole number from one to five, or leave it blank.');
+      return;
+    }
+    try {
+      await updateBookDetails(db, book.id, {
+        title: titleDraft,
+        author: authorDraft,
+        isbn: isbnDraft,
+        startedAt: startedDateDraft,
+        finishedAt: finishedDateDraft,
+        rating,
+        notes: notesDraft,
+      });
+      await load();
+      setDetailsMessage('Book details saved.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Book details could not be saved.');
+    }
+  }
+
+  async function saveSessionCorrection(item: SessionHistoryItem) {
+    const minutes = Number(sessionMinutesDraft);
+    if (!Number.isSafeInteger(minutes) || minutes < 0) {
+      setError('Enter the corrected session time as a whole number of minutes.');
+      return;
+    }
+    setError('');
+    try {
+      await correctSessionDuration(db, item.id, minutes, true);
+      setEditingSessionId(null);
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'The session time could not be corrected.');
     }
   }
 
@@ -156,11 +226,16 @@ export default function BookDetailScreen() {
             ‹ Back
           </Text>
         </Pressable>
-        <Eyebrow>Your book</Eyebrow>
-        <PageTitle>{book.title}</PageTitle>
-        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 15 }}>
-          {book.author || 'Author not added'}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <BookCover title={book.title} uri={book.cover_url ?? coverFromIsbn(book.isbn)} width={86} height={120} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <Eyebrow>Your book</Eyebrow>
+            <PageTitle>{book.title}</PageTitle>
+            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 15 }}>
+              {book.author || 'Author not added'}
+            </Text>
+          </View>
+        </View>
       </View>
 
       {error ? <StatusMessage warning>{error}</StatusMessage> : null}
@@ -173,6 +248,12 @@ export default function BookDetailScreen() {
         <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
           {history.length + (matchingSession ? 1 : 0)} reading {history.length === 1 ? 'session' : 'sessions'}
         </Text>
+        {book.started_at ? (
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>
+            {book.finished_at ? 'Finished' : 'Started'} {new Date(book.finished_at ?? book.started_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+            {` · ${calendarDaysInclusive(book.started_at, book.finished_at ?? now.toISOString())} calendar ${calendarDaysInclusive(book.started_at, book.finished_at ?? now.toISOString()) === 1 ? 'day' : 'days'}`}
+          </Text>
+        ) : null}
       </Card>
 
       <Card style={{ padding: 20, gap: 14 }}>
@@ -202,6 +283,14 @@ export default function BookDetailScreen() {
           </View>
         ) : null}
         <Field
+          label="Total pages (from Open Library; editable)"
+          keyboardType="number-pad"
+          onChangeText={setPageCountDraft}
+          placeholder="Unknown"
+          returnKeyType="done"
+          value={pageCountDraft}
+        />
+        <Field
           label="Current page"
           keyboardType="number-pad"
           onChangeText={setCurrentPageDraft}
@@ -217,6 +306,30 @@ export default function BookDetailScreen() {
         <Button disabled={progressSaving} onPress={() => void saveProgress()}>
           {progressSaving ? 'Saving…' : 'Update page'}
         </Button>
+      </Card>
+
+      <Card>
+        <Eyebrow>Book details</Eyebrow>
+        <Field label="Title" onChangeText={setTitleDraft} value={titleDraft} />
+        <Field label="Author" onChangeText={setAuthorDraft} value={authorDraft} />
+        <Field label="ISBN (optional)" autoCapitalize="characters" onChangeText={setIsbnDraft} value={isbnDraft} />
+        <Field label="Started (YYYY-MM-DD)" placeholder="YYYY-MM-DD" onChangeText={setStartedDateDraft} value={startedDateDraft} />
+        <Field label="Finished (YYYY-MM-DD)" placeholder="YYYY-MM-DD" onChangeText={setFinishedDateDraft} value={finishedDateDraft} />
+        <Field label="Rating (1-5; optional)" keyboardType="number-pad" onChangeText={setRatingDraft} value={ratingDraft} />
+        <View style={{ gap: 7 }}>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>Notes</Text>
+          <TextInput
+            accessibilityLabel="Book notes"
+            multiline
+            onChangeText={setNotesDraft}
+            placeholder="A private note about this book"
+            placeholderTextColor={colors.textMuted}
+            style={{ minHeight: 94, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.text, fontFamily: fonts.body, fontSize: 14, padding: 13, textAlignVertical: 'top' }}
+            value={notesDraft}
+          />
+        </View>
+        {detailsMessage ? <Text style={{ color: colors.accentLight, fontFamily: fonts.body, fontSize: 12 }}>{detailsMessage}</Text> : null}
+        <Button variant="outline" onPress={() => void saveBookDetails()}>Save book details</Button>
       </Card>
 
       {session && session.book_id !== id ? (
@@ -279,13 +392,35 @@ export default function BookDetailScreen() {
         ) : (
           <View style={{ gap: 9 }}>
             {history.map((item) => (
-              <Card key={item.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
-                  {new Date(item.completed_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                </Text>
-                <Text style={{ color: colors.text, fontFamily: fonts.body, fontWeight: '700', fontSize: 13 }}>
-                  {formatDuration(item.seconds)}
-                </Text>
+              <Card key={item.id}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
+                    {new Date(item.completed_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </Text>
+                  <Text style={{ color: colors.text, fontFamily: fonts.body, fontWeight: '700', fontSize: 13 }}>
+                    {formatDuration(item.seconds)}
+                  </Text>
+                </View>
+                {editingSessionId === item.id ? (
+                  <>
+                    <Field label="Correct total time (whole minutes)" keyboardType="number-pad" onChangeText={setSessionMinutesDraft} value={sessionMinutesDraft} />
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Button style={{ flex: 1 }} onPress={() => void saveSessionCorrection(item)}>Save correction</Button>
+                      <Button style={{ flex: 1 }} variant="outline" onPress={() => setEditingSessionId(null)}>Cancel</Button>
+                    </View>
+                  </>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setEditingSessionId(item.id);
+                      setSessionMinutesDraft(String(Math.round(item.seconds / 60)));
+                    }}
+                    style={{ paddingVertical: 3 }}
+                  >
+                    <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>Correct this session time</Text>
+                  </Pressable>
+                )}
               </Card>
             ))}
           </View>

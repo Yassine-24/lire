@@ -84,3 +84,19 @@ export function shiftLocalDay(date: Date, days: number): Date {
   result.setDate(result.getDate() + days);
   return result;
 }
+
+export function localDateInput(value: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  return `${String(date.getFullYear()).padStart(4, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export function calendarDaysInclusive(start: string, end: string): number {
+  const first = new Date(start);
+  const last = new Date(end);
+  if (!Number.isFinite(first.getTime()) || !Number.isFinite(last.getTime())) return 0;
+  const firstUtcDay = Date.UTC(first.getFullYear(), first.getMonth(), first.getDate());
+  const lastUtcDay = Date.UTC(last.getFullYear(), last.getMonth(), last.getDate());
+  return Math.max(1, Math.floor((lastUtcDay - firstUtcDay) / 86400000) + 1);
+}

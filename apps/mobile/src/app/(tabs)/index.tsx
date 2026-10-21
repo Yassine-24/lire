@@ -3,8 +3,8 @@ import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { getCurrentSession, getReadingSegments, listBooks, type Book, type CurrentSession, type ReadingSegment } from '@/data/books';
-import { finishSession, pauseSession, resumeSession } from '@/data/reading';
-import { Button, Card, Eyebrow, Page, PageTitle, SectionTitle, StatusMessage } from '@/components/ui';
+import { correctSessionDuration, finishSession, pauseSession, resumeSession } from '@/data/reading';
+import { Button, Card, Eyebrow, Field, Page, PageTitle, SectionTitle, StatusMessage } from '@/components/ui';
 import { colors, fonts, spacing } from '@/design/tokens';
 import { dateLabel, localDayKey, secondsByLocalDay, sumSegmentSeconds } from '@/domain/time';
 
@@ -155,6 +155,7 @@ export default function TodayScreen() {
   const [session, setSession] = useState<CurrentSession | null>(null);
   const [now, setNow] = useState(new Date());
   const [error, setError] = useState('');
+  const [correctionMinutes, setCorrectionMinutes] = useState('');
 
   const load = useCallback(async () => {
     const [nextBooks, nextSegments, nextSession] = await Promise.all([
@@ -166,6 +167,7 @@ export default function TodayScreen() {
     setSegments(nextSegments);
     setSession(nextSession);
     setNow(new Date());
+    if (nextSession) setCorrectionMinutes(String(Math.round(sumSegmentSeconds(nextSession.segments, new Date()) / 60)));
   }, [db]);
 
   useFocusEffect(
@@ -203,6 +205,22 @@ export default function TodayScreen() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'That action could not be completed.');
       await load();
+    }
+  }
+
+  async function correctLongSession(finish: boolean) {
+    if (!session) return;
+    const minutes = Number(correctionMinutes);
+    if (!Number.isSafeInteger(minutes) || minutes < 0) {
+      setError('Enter the corrected total reading time as whole minutes.');
+      return;
+    }
+    setError('');
+    try {
+      await correctSessionDuration(db, session.id, minutes, finish);
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'The reading time could not be corrected.');
     }
   }
 
@@ -267,9 +285,25 @@ export default function TodayScreen() {
             {clockDuration(sessionSeconds)}
           </Text>
           {sessionAgeHours > 6 ? (
-            <StatusMessage warning>
-              This timer has been open for more than six hours. Pause or finish it if you stopped reading.
-            </StatusMessage>
+            <View style={{ gap: 10 }}>
+              <StatusMessage warning>
+                This timer has been running for more than six hours. Confirm the time you actually read, or keep the full timer when you finish.
+              </StatusMessage>
+              <Field
+                label="Total time to keep (whole minutes)"
+                keyboardType="number-pad"
+                onChangeText={setCorrectionMinutes}
+                value={correctionMinutes}
+              />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Button variant="soft" style={{ flex: 1 }} onPress={() => void correctLongSession(false)}>
+                  Correct and pause
+                </Button>
+                <Button variant="outline" style={{ flex: 1 }} onPress={() => void correctLongSession(true)}>
+                  Correct and finish
+                </Button>
+              </View>
+            </View>
           ) : null}
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 2 }}>
             <Button

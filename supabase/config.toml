@@ -1,0 +1,4 @@
+project_id = "lire"
+
+[functions.catalog-search]
+verify_jwt = false

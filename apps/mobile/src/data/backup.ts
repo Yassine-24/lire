@@ -8,6 +8,7 @@ export type BackupSession = {
   status: 'running' | 'paused' | 'completed';
   started_at: string;
   completed_at: string | null;
+  updated_at: string;
 };
 
 export type BackupSegment = {
@@ -15,11 +16,12 @@ export type BackupSegment = {
   session_id: string;
   started_at: string;
   ended_at: string | null;
+  updated_at: string;
 };
 
 export type LireBackup = {
   format: 'lire-backup';
-  version: 2;
+  version: 3;
   exportedAt: string;
   books: Book[];
   sessions: BackupSession[];
@@ -48,29 +50,29 @@ export async function createBackup(db: SQLiteDatabase): Promise<string> {
   await withAppTransaction(db, async (transaction) => {
     const exportedAt = new Date().toISOString();
     const books = await transaction.getAllAsync<Book>(
-      'SELECT id, title, author, status, page_count, current_page, created_at, updated_at FROM books ORDER BY created_at ASC, id ASC',
+      'SELECT id, title, author, status, page_count, current_page, catalog_id, isbn, cover_url, published_year, started_at, finished_at, rating, notes, created_at, updated_at FROM books ORDER BY created_at ASC, id ASC',
     );
     const sessions = await transaction.getAllAsync<BackupSession>(
-      'SELECT id, book_id, status, started_at, completed_at FROM reading_sessions ORDER BY started_at ASC, id ASC',
+      'SELECT id, book_id, status, started_at, completed_at, updated_at FROM reading_sessions ORDER BY started_at ASC, id ASC',
     );
     const segments = await transaction.getAllAsync<BackupSegment>(
-      'SELECT id, session_id, started_at, ended_at FROM session_segments ORDER BY started_at ASC, id ASC',
+      'SELECT id, session_id, started_at, ended_at, updated_at FROM session_segments ORDER BY started_at ASC, id ASC',
     );
     const runningSessionIds = new Set(sessions.filter((session) => session.status === 'running').map((session) => session.id));
     const snapshotSessions = sessions.map((session) =>
-      session.status === 'running' ? { ...session, status: 'paused' as const } : session,
+      session.status === 'running' ? { ...session, status: 'paused' as const, updated_at: exportedAt } : session,
     );
     const snapshotSegments = segments.map((segment) => {
       if (segment.ended_at !== null) return segment;
       if (!runningSessionIds.has(segment.session_id)) {
         throw new Error('Your reading data could not be backed up because a session is inconsistent.');
       }
-      return { ...segment, ended_at: exportedAt };
+      return { ...segment, ended_at: exportedAt, updated_at: exportedAt };
     });
 
     backup = {
       format: 'lire-backup',
-      version: 2,
+      version: 3,
       exportedAt,
       books,
       sessions: snapshotSessions,
@@ -92,7 +94,7 @@ export function parseBackup(contents: string): LireBackup {
   if (
     !isRecord(raw) ||
     raw.format !== 'lire-backup' ||
-    (raw.version !== 1 && raw.version !== 2) ||
+    (raw.version !== 1 && raw.version !== 2 && raw.version !== 3) ||
     !isTimestamp(raw.exportedAt)
   ) {
     throw new Error('This backup was created by an incompatible version of Lire.');
@@ -104,19 +106,38 @@ export function parseBackup(contents: string): LireBackup {
   const books = raw.books.map((item): Book => {
     const pageCount = raw.version === 1 ? null : isRecord(item) ? item.page_count : undefined;
     const currentPage = raw.version === 1 ? 0 : isRecord(item) ? item.current_page : undefined;
+    const catalogId = raw.version === 3 && isRecord(item) ? item.catalog_id : null;
+    const isbn = raw.version === 3 && isRecord(item) ? item.isbn : null;
+    const coverUrl = raw.version === 3 && isRecord(item) ? item.cover_url : null;
+    const publishedYear = raw.version === 3 && isRecord(item) ? item.published_year : null;
+    const startedAt = raw.version === 3 && isRecord(item) ? item.started_at : null;
+    const finishedAt = raw.version === 3 && isRecord(item) ? item.finished_at : null;
+    const rating = raw.version === 3 && isRecord(item) ? item.rating : null;
+    const notes = raw.version === 3 && isRecord(item) ? item.notes : null;
     if (
       !isRecord(item) ||
       !isNonEmptyString(item.id) ||
       !isNonEmptyString(item.title) ||
       !(item.author === null || typeof item.author === 'string') ||
-      !(['reading', 'want_to_read', 'finished'] as unknown[]).includes(item.status) ||
+      !(raw.version === 3
+        ? (['reading', 'want_to_read', 'finished', 'paused'] as unknown[]).includes(item.status)
+        : (['reading', 'want_to_read', 'finished'] as unknown[]).includes(item.status)) ||
       !isTimestamp(item.created_at) ||
       !isTimestamp(item.updated_at) ||
       !(pageCount === null || (typeof pageCount === 'number' && Number.isSafeInteger(pageCount) && pageCount > 0)) ||
       typeof currentPage !== 'number' ||
       !Number.isSafeInteger(currentPage) ||
       currentPage < 0 ||
-      (pageCount !== null && currentPage > pageCount)
+      (pageCount !== null && currentPage > pageCount) ||
+      !(catalogId === null || typeof catalogId === 'string') ||
+      !(isbn === null || typeof isbn === 'string') ||
+      !(coverUrl === null || typeof coverUrl === 'string') ||
+      !(publishedYear === null || (typeof publishedYear === 'number' && Number.isInteger(publishedYear))) ||
+      !(startedAt === null || isTimestamp(startedAt)) ||
+      !(finishedAt === null || isTimestamp(finishedAt)) ||
+      !(rating === null || (typeof rating === 'number' && Number.isSafeInteger(rating) && rating >= 1 && rating <= 5)) ||
+      !(notes === null || typeof notes === 'string') ||
+      (startedAt !== null && finishedAt !== null && Date.parse(finishedAt) < Date.parse(startedAt))
     ) {
       throw invalidBackup();
     }
@@ -127,19 +148,31 @@ export function parseBackup(contents: string): LireBackup {
       status: item.status as BookStatus,
       page_count: pageCount,
       current_page: currentPage,
+      catalog_id: catalogId,
+      isbn,
+      cover_url: coverUrl,
+      published_year: publishedYear,
+      started_at: startedAt,
+      finished_at: finishedAt,
+      rating,
+      notes,
       created_at: item.created_at,
       updated_at: item.updated_at,
     };
   });
 
   const sessions = raw.sessions.map((item): BackupSession => {
+    const updatedAt = raw.version === 3 && isRecord(item)
+      ? item.updated_at
+      : isRecord(item) ? item.completed_at ?? item.started_at : undefined;
     if (
       !isRecord(item) ||
       !isNonEmptyString(item.id) ||
       !isNonEmptyString(item.book_id) ||
       !(['running', 'paused', 'completed'] as unknown[]).includes(item.status) ||
       !isTimestamp(item.started_at) ||
-      !(item.completed_at === null || isTimestamp(item.completed_at))
+      !(item.completed_at === null || isTimestamp(item.completed_at)) ||
+      !isTimestamp(updatedAt)
     ) {
       throw invalidBackup();
     }
@@ -150,16 +183,21 @@ export function parseBackup(contents: string): LireBackup {
       status: item.status as BackupSession['status'],
       started_at: item.started_at,
       completed_at: item.completed_at,
+      updated_at: updatedAt,
     };
   });
 
   const segments = raw.segments.map((item): BackupSegment => {
+    const updatedAt = raw.version === 3 && isRecord(item)
+      ? item.updated_at
+      : isRecord(item) ? item.ended_at ?? item.started_at : undefined;
     if (
       !isRecord(item) ||
       !isNonEmptyString(item.id) ||
       !isNonEmptyString(item.session_id) ||
       !isTimestamp(item.started_at) ||
-      !(item.ended_at === null || isTimestamp(item.ended_at))
+      !(item.ended_at === null || isTimestamp(item.ended_at)) ||
+      !isTimestamp(updatedAt)
     ) {
       throw invalidBackup();
     }
@@ -169,6 +207,7 @@ export function parseBackup(contents: string): LireBackup {
       session_id: item.session_id,
       started_at: item.started_at,
       ended_at: item.ended_at,
+      updated_at: updatedAt,
     };
   });
 
@@ -230,7 +269,7 @@ export function parseBackup(contents: string): LireBackup {
   const exportedAt = raw.exportedAt;
   return {
     format: 'lire-backup',
-    version: 2,
+    version: 3,
     exportedAt,
     books,
     sessions: sessions.map((session) =>
@@ -250,34 +289,44 @@ export async function restoreBackup(db: SQLiteDatabase, backup: LireBackup): Pro
 
     for (const book of backup.books) {
       await transaction.runAsync(
-        'INSERT INTO books (id, title, author, status, page_count, current_page, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO books (id, title, author, status, page_count, current_page, catalog_id, isbn, cover_url, published_year, started_at, finished_at, rating, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         book.id,
         book.title,
         book.author,
         book.status,
         book.page_count,
         book.current_page,
+        book.catalog_id,
+        book.isbn,
+        book.cover_url,
+        book.published_year,
+        book.started_at,
+        book.finished_at,
+        book.rating,
+        book.notes,
         book.created_at,
         book.updated_at,
       );
     }
     for (const session of backup.sessions) {
       await transaction.runAsync(
-        'INSERT INTO reading_sessions (id, book_id, status, started_at, completed_at) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO reading_sessions (id, book_id, status, started_at, completed_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
         session.id,
         session.book_id,
         session.status,
         session.started_at,
         session.completed_at,
+        session.updated_at,
       );
     }
     for (const segment of backup.segments) {
       await transaction.runAsync(
-        'INSERT INTO session_segments (id, session_id, started_at, ended_at) VALUES (?, ?, ?, ?)',
+        'INSERT INTO session_segments (id, session_id, started_at, ended_at, updated_at) VALUES (?, ?, ?, ?, ?)',
         segment.id,
         segment.session_id,
         segment.started_at,
         segment.ended_at,
+        segment.updated_at,
       );
     }
   });

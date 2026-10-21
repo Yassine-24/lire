@@ -280,3 +280,26 @@ export async function getCompletedSessionCount(db: SQLiteDatabase): Promise<numb
   );
   return result?.total ?? 0;
 }
+
+
+export async function deleteBook(db: SQLiteDatabase, id: string, cloudUserId?: string): Promise<void> {
+  const deletedAt = new Date().toISOString();
+  await withAppTransaction(db, async (transaction) => {
+    const activeSession = await transaction.getFirstAsync<{ id: string }>(
+      "SELECT id FROM reading_sessions WHERE book_id = ? AND status IN ('running', 'paused') LIMIT 1",
+      id,
+    );
+    if (activeSession) throw new Error('Pause or finish this book’s timer before removing it.');
+
+    if (cloudUserId) {
+      await transaction.runAsync(
+        'INSERT INTO deleted_book_ids (user_id, book_id, deleted_at) VALUES (?, ?, ?) ON CONFLICT(user_id, book_id) DO UPDATE SET deleted_at = excluded.deleted_at',
+        cloudUserId,
+        id,
+        deletedAt,
+      );
+    }
+    const result = await transaction.runAsync('DELETE FROM books WHERE id = ?', id);
+    if (result.changes === 0) throw new Error('This book is no longer in your library.');
+  });
+}

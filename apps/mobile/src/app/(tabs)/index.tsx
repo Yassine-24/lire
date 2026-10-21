@@ -3,12 +3,13 @@ import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { getCurrentSession, getReadingSegments, listBooks, type Book, type CurrentSession, type ReadingSegment } from '@/data/books';
-import { correctSessionDuration, finishSession, pauseSession, resumeSession } from '@/data/reading';
+import { correctSessionDuration, finishSession, pauseSession, resumeSession, startSession } from '@/data/reading';
+import { BookCover } from '@/components/BookCover';
 import { Button, Card, Eyebrow, Field, Page, PageTitle, SectionTitle, StatusMessage } from '@/components/ui';
-import { colors, fonts, spacing } from '@/design/tokens';
+import { colors, fonts } from '@/design/tokens';
 import { dateLabel, localDayKey, secondsByLocalDay, sumSegmentSeconds } from '@/domain/time';
 
-const CLOCK_SIZE = 248;
+const CLOCK_SIZE = 222;
 const CLOCK_CENTER = CLOCK_SIZE / 2;
 
 function clockDuration(totalSeconds: number): string {
@@ -33,53 +34,47 @@ function TodayClock({ seconds, running }: { seconds: number; running: boolean })
       left: CLOCK_CENTER + Math.cos(angle) * radius - width / 2,
       top: CLOCK_CENTER + Math.sin(angle) * radius - height / 2,
       rotation: index * 6,
-      color: index % 15 === 0 ? colors.accent : major ? '#66717C' : '#343B43',
+      color: index % 15 === 0 ? colors.accent : major ? '#727D86' : '#343D45',
     };
   });
 
   return (
-    <Card dark style={{ padding: 20, gap: 18, backgroundColor: '#11161B', borderColor: '#29313A' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Eyebrow>Daily reading clock</Eyebrow>
-        <Text style={{ color: colors.textMuted, fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1 }}>
-          LOCAL / TODAY
-        </Text>
+    <Card dark style={{ padding: 18, gap: 14, alignItems: 'center' }}>
+      <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ gap: 4 }}>
+          <Eyebrow>Today’s reading</Eyebrow>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>Time set aside for books</Text>
+        </View>
+        <View style={{ backgroundColor: running ? colors.accentSoft : colors.surfaceElevated, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
+          <Text style={{ color: running ? colors.accentLight : colors.textMuted, fontFamily: fonts.mono, fontSize: 9, letterSpacing: 0.8 }}>
+            {running ? 'LIVE' : 'LOCAL'}
+          </Text>
+        </View>
       </View>
 
       <View
         accessible
         accessibilityLabel={`Today's reading time ${clockDuration(seconds)}${running ? ', live timer' : ''}`}
-        style={{ alignItems: 'center', paddingVertical: 3 }}
+        style={{ alignItems: 'center', paddingVertical: 2 }}
       >
         <View
           style={{
             width: CLOCK_SIZE,
             height: CLOCK_SIZE,
             borderRadius: CLOCK_CENTER,
-            backgroundColor: '#0D1115',
-            borderColor: '#303841',
+            backgroundColor: '#0C1014',
+            borderColor: running ? '#5A3826' : '#303941',
             borderWidth: 1,
             alignItems: 'center',
             justifyContent: 'center',
             shadowColor: colors.accent,
-            shadowOpacity: running ? 0.18 : 0.07,
-            shadowRadius: running ? 24 : 14,
+            shadowOpacity: running ? 0.22 : 0.1,
+            shadowRadius: running ? 26 : 15,
             shadowOffset: { width: 0, height: 0 },
             elevation: running ? 8 : 3,
           }}
         >
-          <View
-            style={{
-              position: 'absolute',
-              left: 15,
-              top: 15,
-              right: 15,
-              bottom: 15,
-              borderRadius: CLOCK_CENTER,
-              borderWidth: 1,
-              borderColor: '#20272E',
-            }}
-          />
+          <View style={{ position: 'absolute', left: 14, top: 14, right: 14, bottom: 14, borderRadius: CLOCK_CENTER, borderWidth: 1, borderColor: '#20272E' }} />
           {ticks.map((tick) => (
             <View
               key={tick.key}
@@ -95,55 +90,76 @@ function TodayClock({ seconds, running }: { seconds: number; running: boolean })
               }}
             />
           ))}
-          <View style={{ alignItems: 'center', gap: 7 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-              <View
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: running ? colors.accent : '#67727D',
-                }}
-              />
-              <Text
-                style={{
-                  color: running ? colors.accentLight : colors.textMuted,
-                  fontFamily: fonts.body,
-                  fontSize: 9,
-                  fontWeight: '700',
-                  letterSpacing: 1.7,
-                }}
-              >
-                {running ? 'SESSION LIVE' : 'TODAY SO FAR'}
-              </Text>
-            </View>
-            <Text
-              style={{
-                color: colors.text,
-                fontFamily: fonts.mono,
-                fontSize: 32,
-                fontWeight: '600',
-                letterSpacing: -1.8,
-                fontVariant: ['tabular-nums'],
-              }}
-            >
+          <View style={{ alignItems: 'center', gap: 6 }}>
+            <Text style={{ color: running ? colors.accentLight : colors.textMuted, fontFamily: fonts.body, fontSize: 9, fontWeight: '700', letterSpacing: 1.5 }}>
+              {running ? 'SESSION IN PROGRESS' : 'READING TIME'}
+            </Text>
+            <Text style={{ color: colors.text, fontFamily: fonts.mono, fontSize: 30, fontWeight: '600', letterSpacing: -1.8, fontVariant: ['tabular-nums'] }}>
               {clockDuration(seconds)}
             </Text>
-            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 10, letterSpacing: 1.8 }}>
-              HOURS : MIN : SEC
-            </Text>
+            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 9, letterSpacing: 1.5 }}>HOURS · MIN · SEC</Text>
           </View>
         </View>
       </View>
+    </Card>
+  );
+}
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>
-          {running ? 'Counting while you read' : 'Your time, on your device'}
-        </Text>
-        <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1 }}>
-          01 / DAY
-        </Text>
+function StartReadingCard({
+  books,
+  busy,
+  onStart,
+  onAdd,
+  onLibrary,
+}: {
+  books: Book[];
+  busy: string;
+  onStart: (bookId: string) => void;
+  onAdd: () => void;
+  onLibrary: () => void;
+}) {
+  return (
+    <Card style={{ padding: 18, borderColor: '#54301E', backgroundColor: '#191713' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Eyebrow>Ready when you are</Eyebrow>
+        <Text style={{ color: colors.accent, fontFamily: fonts.mono, fontSize: 10 }}>01 / START</Text>
       </View>
+      {books.length > 0 ? (
+        <>
+          <SectionTitle detail="Start in one tap">Pick up a book</SectionTitle>
+          <View style={{ gap: 9 }}>
+            {books.slice(0, 2).map((book) => (
+              <View key={book.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 17, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+                <BookCover title={book.title} uri={book.cover_url} width={42} height={58} />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 15, fontWeight: '700' }}>{book.title}</Text>
+                  <Text numberOfLines={1} style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>{book.author || 'Ready to read'} · {book.status === 'reading' ? 'IN PROGRESS' : 'NEXT UP'}</Text>
+                  {book.page_count ? <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 9 }}>PAGE {book.current_page} / {book.page_count}</Text> : null}
+                </View>
+                <Button disabled={busy.length > 0} onPress={() => onStart(book.id)} style={{ minHeight: 42, paddingHorizontal: 13, borderRadius: 13 }}>
+                  {busy === book.id ? 'Starting…' : 'Start'}
+                </Button>
+              </View>
+            ))}
+          </View>
+          <Pressable accessibilityRole="link" onPress={onLibrary} style={{ alignSelf: 'center', paddingVertical: 2 }}>
+            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, fontWeight: '600' }}>Browse your library →</Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 21, lineHeight: 27, fontWeight: '700' }}>
+            Choose a book and start reading.
+          </Text>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }}>
+            Your timer is ready. Add a title or choose one from your shelves.
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 9 }}>
+            <Button style={{ flex: 1 }} onPress={onAdd}>Find a book</Button>
+            <Button variant="outline" style={{ flex: 1 }} onPress={onLibrary}>My library</Button>
+          </View>
+        </>
+      )}
     </Card>
   );
 }
@@ -156,6 +172,8 @@ export default function TodayScreen() {
   const [now, setNow] = useState(new Date());
   const [error, setError] = useState('');
   const [correctionMinutes, setCorrectionMinutes] = useState('');
+  const [busyBookId, setBusyBookId] = useState('');
+  const [sessionBusy, setSessionBusy] = useState(false);
 
   const load = useCallback(async () => {
     const [nextBooks, nextSegments, nextSession] = await Promise.all([
@@ -177,7 +195,6 @@ export default function TodayScreen() {
   );
 
   const isSessionRunning = session?.status === 'running';
-
   useEffect(() => {
     if (!isSessionRunning) return;
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -186,16 +203,28 @@ export default function TodayScreen() {
 
   const dayTotals = secondsByLocalDay(segments, now);
   const todaySeconds = dayTotals[localDayKey(now)] ?? 0;
-  const readingBooks = books.filter((book) => book.status === 'reading');
+  const startBooks = books.filter((book) => book.status !== 'finished');
   const sessionSeconds = session ? sumSegmentSeconds(session.segments, now) : 0;
   const activeBook = session ? books.find((book) => book.id === session.book_id) : undefined;
   const activeSegment = session?.segments.find((segment) => segment.ended_at === null);
-  const sessionAgeHours = activeSegment
-    ? (now.getTime() - Date.parse(activeSegment.started_at)) / 3600000
-    : 0;
+  const sessionAgeHours = activeSegment ? (now.getTime() - Date.parse(activeSegment.started_at)) / 3600000 : 0;
+
+  async function beginReading(bookId: string) {
+    setBusyBookId(bookId);
+    setError('');
+    try {
+      await startSession(db, bookId);
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'A reading session could not be started.');
+    } finally {
+      setBusyBookId('');
+    }
+  }
 
   async function runSessionAction(action: 'pause' | 'resume' | 'finish') {
     if (!session) return;
+    setSessionBusy(true);
     setError('');
     try {
       if (action === 'pause') await pauseSession(db, session.id);
@@ -205,6 +234,8 @@ export default function TodayScreen() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'That action could not be completed.');
       await load();
+    } finally {
+      setSessionBusy(false);
     }
   }
 
@@ -215,23 +246,26 @@ export default function TodayScreen() {
       setError('Enter the corrected total reading time as whole minutes.');
       return;
     }
+    setSessionBusy(true);
     setError('');
     try {
       await correctSessionDuration(db, session.id, minutes, finish);
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'The reading time could not be corrected.');
+    } finally {
+      setSessionBusy(false);
     }
   }
 
   return (
-    <Page>
+    <Page contentStyle={{ gap: 16 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View style={{ flex: 1, gap: 7 }}>
-          <Eyebrow>Lire / reading system</Eyebrow>
+        <View style={{ flex: 1, gap: 5 }}>
+          <Eyebrow>A little time for a book</Eyebrow>
           <PageTitle>Today</PageTitle>
-          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, letterSpacing: 1.1 }}>
-            {dateLabel(now).toUpperCase()}
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>
+            {dateLabel(now)}
           </Text>
         </View>
         <Pressable
@@ -239,192 +273,79 @@ export default function TodayScreen() {
           accessibilityLabel="Add a book"
           onPress={() => router.push('/book/new')}
           style={({ pressed }) => ({
-            width: 46,
-            height: 46,
-            borderRadius: 15,
+            width: 48,
+            height: 48,
+            borderRadius: 16,
             borderWidth: 1,
             borderColor: '#704027',
             backgroundColor: colors.accentSoft,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: pressed ? 0.75 : 1,
+            opacity: pressed ? 0.78 : 1,
           })}
         >
-          <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 27, fontWeight: '400', marginTop: -2 }}>
-            +
-          </Text>
+          <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 27, fontWeight: '400', marginTop: -2 }}>+</Text>
         </Pressable>
       </View>
 
-      <TodayClock seconds={todaySeconds} running={Boolean(isSessionRunning)} />
-
       {error ? <StatusMessage warning>{error}</StatusMessage> : null}
 
-      {session ? (
-        <Card style={{ padding: 20, borderColor: session.status === 'running' ? '#67361F' : colors.border }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Eyebrow>{session.status === 'running' ? 'Focus session / active' : 'Focus session / paused'}</Eyebrow>
-            <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1 }}>
-              {session.status === 'running' ? 'LIVE' : 'HOLD'}
-            </Text>
+      {!session ? (
+        <StartReadingCard
+          books={startBooks}
+          busy={busyBookId}
+          onStart={(bookId) => void beginReading(bookId)}
+          onAdd={() => router.push('/book/new')}
+          onLibrary={() => router.push('/(tabs)/library')}
+        />
+      ) : (
+        <Card dark style={{ padding: 18, borderColor: session.status === 'running' ? '#6A402A' : colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Eyebrow>{session.status === 'running' ? 'You’re reading' : 'Session paused'}</Eyebrow>
+            <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 9, letterSpacing: 0.9 }}>{session.status === 'running' ? 'LIVE' : 'ON HOLD'}</Text>
           </View>
-          <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 24, fontWeight: '700', lineHeight: 30 }}>
-            {session.book_title}
-          </Text>
-          {session.book_author ? (
-            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
-              {session.book_author}
-            </Text>
-          ) : null}
-          {activeBook?.page_count ? (
-            <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 11, letterSpacing: 0.6 }}>
-              PAGE {activeBook.current_page} / {activeBook.page_count}
-            </Text>
-          ) : null}
-          <Text style={{ color: colors.text, fontFamily: fonts.mono, fontSize: 32, fontWeight: '600', marginTop: 2 }}>
-            {clockDuration(sessionSeconds)}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
+            <BookCover title={session.book_title} uri={activeBook?.cover_url ?? null} width={52} height={70} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text numberOfLines={2} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 19, lineHeight: 24, fontWeight: '700' }}>{session.book_title}</Text>
+              <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>{session.book_author || 'Reading session'}</Text>
+              {activeBook?.page_count ? <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 9 }}>PAGE {activeBook.current_page} / {activeBook.page_count}</Text> : null}
+            </View>
+            <Text style={{ color: colors.text, fontFamily: fonts.mono, fontSize: 20, fontWeight: '600' }}>{clockDuration(sessionSeconds)}</Text>
+          </View>
           {sessionAgeHours > 6 ? (
             <View style={{ gap: 10 }}>
-              <StatusMessage warning>
-                This timer has been running for more than six hours. Confirm the time you actually read, or keep the full timer when you finish.
-              </StatusMessage>
-              <Field
-                label="Total time to keep (whole minutes)"
-                keyboardType="number-pad"
-                onChangeText={setCorrectionMinutes}
-                value={correctionMinutes}
-              />
+              <StatusMessage warning>This timer has been running for more than six hours. Correct your reading time before closing it.</StatusMessage>
+              <Field label="Total time to keep (minutes)" keyboardType="number-pad" onChangeText={setCorrectionMinutes} value={correctionMinutes} />
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Button variant="soft" style={{ flex: 1 }} onPress={() => void correctLongSession(false)}>
-                  Correct and pause
-                </Button>
-                <Button variant="outline" style={{ flex: 1 }} onPress={() => void correctLongSession(true)}>
-                  Correct and finish
-                </Button>
+                <Button variant="soft" disabled={sessionBusy} style={{ flex: 1 }} onPress={() => void correctLongSession(false)}>Correct and pause</Button>
+                <Button variant="outline" disabled={sessionBusy} style={{ flex: 1 }} onPress={() => void correctLongSession(true)}>Correct and finish</Button>
               </View>
             </View>
           ) : null}
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 2 }}>
-            <Button
-              variant="soft"
-              style={{ flex: 1 }}
-              onPress={() => void runSessionAction(session.status === 'running' ? 'pause' : 'resume')}
-            >
-              {session.status === 'running' ? 'Pause session' : 'Resume session'}
+          <View style={{ flexDirection: 'row', gap: 9 }}>
+            <Button variant="soft" disabled={sessionBusy} style={{ flex: 1 }} onPress={() => void runSessionAction(session.status === 'running' ? 'pause' : 'resume')}>
+              {session.status === 'running' ? 'Pause' : 'Resume reading'}
             </Button>
-            <Button
-              variant="outline"
-              style={{ flex: 1, borderColor: colors.border }}
-              onPress={() => void runSessionAction('finish')}
-            >
-              Finish
-            </Button>
+            <Button variant="outline" disabled={sessionBusy} style={{ flex: 1 }} onPress={() => void runSessionAction('finish')}>Finish session</Button>
           </View>
-          <Pressable
-            accessibilityRole="link"
-            onPress={() => router.push({ pathname: '/book/[id]', params: { id: session.book_id } })}
-            style={{ paddingVertical: 5 }}
-          >
-            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, fontWeight: '600' }}>
-              Open book profile →
-            </Text>
+          <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: session.book_id } })} style={{ alignSelf: 'center', paddingVertical: 1 }}>
+            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, fontWeight: '600' }}>Book details →</Text>
           </Pressable>
         </Card>
-      ) : null}
+      )}
 
-      {!session && readingBooks.length === 0 ? (
-        <Card style={{ padding: 20 }}>
-          <Eyebrow>System idle</Eyebrow>
-          <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 23, fontWeight: '700', lineHeight: 29 }}>
-            Ready when you are.
-          </Text>
-          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
-            Add a book to start logging your time and page progress.
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 3 }}>
-            <Button style={{ flex: 1 }} onPress={() => router.push('/book/new')}>
-              Add a book
-            </Button>
-            <Button variant="outline" style={{ flex: 1 }} onPress={() => router.push('/library')}>
-              Library
-            </Button>
-          </View>
-        </Card>
-      ) : null}
+      <TodayClock seconds={todaySeconds} running={Boolean(isSessionRunning)} />
 
-      {readingBooks.length > 0 && !session ? (
-        <View style={{ gap: 13 }}>
-          <SectionTitle detail="Tap a title to begin">Pick up a book</SectionTitle>
-          <View style={{ gap: 10 }}>
-            {readingBooks.slice(0, 3).map((book, index) => {
-              const progress = book.page_count
-                ? Math.min(100, Math.round((book.current_page / book.page_count) * 100))
-                : null;
-              return (
-                <Pressable
-                  key={book.id}
-                  accessibilityRole="button"
-                  onPress={() => router.push({ pathname: '/book/[id]', params: { id: book.id } })}
-                  style={({ pressed }) => ({
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    borderWidth: 1,
-                    borderRadius: 17,
-                    padding: spacing.card,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 13,
-                    opacity: pressed ? 0.82 : 1,
-                  })}
-                >
-                  <View
-                    style={{
-                      width: 43,
-                      height: 57,
-                      borderRadius: 9,
-                      borderWidth: 1,
-                      borderColor: index === 0 ? '#744126' : colors.border,
-                      backgroundColor: index === 0 ? colors.accentSoft : colors.surfaceRaised,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Text style={{ color: index === 0 ? colors.accent : colors.textMuted, fontFamily: fonts.mono, fontSize: 19 }}>
-                      {String(index + 1).padStart(2, '0')}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 17, fontWeight: '700' }}>
-                      {book.title}
-                    </Text>
-                    <Text numberOfLines={1} style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>
-                      {book.author || 'Author not added'}
-                    </Text>
-                    {book.page_count ? (
-                      <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 9, letterSpacing: 0.5 }}>
-                        PAGE {book.current_page} / {book.page_count}
-                      </Text>
-                    ) : null}
-                    {progress !== null ? (
-                      <View style={{ height: 3, borderRadius: 4, backgroundColor: colors.border, overflow: 'hidden', marginTop: 3 }}>
-                        <View style={{ height: 3, width: progress + '%', backgroundColor: colors.accent }} />
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={{ color: colors.accent, fontFamily: fonts.mono, fontSize: 11, fontWeight: '700' }}>
-                    OPEN ›
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+      {!session && startBooks.length > 2 ? (
+        <View style={{ alignItems: 'center', paddingTop: 1 }}>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>Showing your next two books · {startBooks.length} ready to read</Text>
         </View>
       ) : null}
 
-      <View style={{ paddingBottom: 4, paddingTop: 3 }}>
-        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11, lineHeight: 18, textAlign: 'center' }}>
-          Your reading history stays on this device.
+      <View style={{ paddingBottom: 3, paddingTop: 1 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11, lineHeight: 17, textAlign: 'center' }}>
+          A quiet record of the time you give to reading.
         </Text>
       </View>
     </Page>

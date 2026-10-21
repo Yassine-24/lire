@@ -13,6 +13,14 @@ type CloudSession = {
   updated_at: string;
 };
 
+type CloudBookDeletion = {
+  user_id: string;
+  book_id: string;
+  deleted_at: string;
+};
+
+type LocalBookDeletion = Omit<CloudBookDeletion, 'user_id'>;
+
 type CloudSegment = {
   id: string;
   user_id: string;
@@ -89,16 +97,63 @@ export async function synchronizeReadingData(
 ): Promise<{ books: number; sessions: number }> {
   if (!supabase) throw new Error('Add your Supabase URL and publishable key to enable account sync.');
 
-  const [{ data: remoteBooks, error: bookReadError }, { data: remoteSessions, error: sessionReadError }] = await Promise.all([
+  const [
+    { data: remoteBooks, error: bookReadError },
+    { data: remoteSessions, error: sessionReadError },
+    { data: remoteDeletions, error: deletionReadError },
+  ] = await Promise.all([
     supabase.from('user_books').select('*').eq('user_id', userId),
     supabase.from('reading_sessions').select('*').eq('user_id', userId),
+    supabase.from('user_book_deletions').select('*').eq('user_id', userId),
   ]);
   throwIfError(bookReadError);
   throwIfError(sessionReadError);
+  throwIfError(deletionReadError);
 
+  const localDeletions = await db.getAllAsync<LocalBookDeletion>(
+    'SELECT book_id, deleted_at FROM deleted_book_ids WHERE user_id = ?',
+    userId,
+  );
+  const deletionByBookId = new Map<string, string>();
+  for (const deletion of remoteDeletions ?? []) {
+    const row = deletion as CloudBookDeletion;
+    deletionByBookId.set(row.book_id, row.deleted_at);
+  }
+  for (const deletion of localDeletions) {
+    const existing = deletionByBookId.get(deletion.book_id);
+    if (!existing || Date.parse(deletion.deleted_at) > Date.parse(existing)) {
+      deletionByBookId.set(deletion.book_id, deletion.deleted_at);
+    }
+  }
+  const deletedBookIds = new Set(deletionByBookId.keys());
+  const deletionsToPush = [...deletionByBookId].map(([book_id, deleted_at]) => ({ user_id: userId, book_id, deleted_at }));
+  if (deletionsToPush.length > 0) {
+    const { error } = await supabase.from('user_book_deletions').upsert(deletionsToPush, { onConflict: 'user_id,book_id' });
+    throwIfError(error);
+  }
+  for (const bookId of deletedBookIds) {
+    const { error } = await supabase.from('user_books').delete().eq('user_id', userId).eq('id', bookId);
+    throwIfError(error);
+  }
+  if (deletedBookIds.size > 0) {
+    await withAppTransaction(db, async (transaction) => {
+      for (const [bookId, deletedAt] of deletionByBookId) {
+        await transaction.runAsync(
+          'INSERT INTO deleted_book_ids (user_id, book_id, deleted_at) VALUES (?, ?, ?) ON CONFLICT(user_id, book_id) DO UPDATE SET deleted_at = excluded.deleted_at',
+          userId,
+          bookId,
+          deletedAt,
+        );
+        await transaction.runAsync('DELETE FROM books WHERE id = ?', bookId);
+      }
+    });
+  }
+
+  const availableRemoteBooks = (remoteBooks ?? []).filter((value) => !deletedBookIds.has((value as Book).id));
+  const availableRemoteSessions = (remoteSessions ?? []).filter((value) => !deletedBookIds.has((value as CloudSession).book_id));
   let localBooks = await listBooks(db);
   const localBooksById = new Map(localBooks.map((book) => [book.id, book]));
-  for (const value of remoteBooks ?? []) {
+  for (const value of availableRemoteBooks) {
     const remote = value as Book & { user_id: string };
     const local = localBooksById.get(remote.id);
     if (!local || remoteWins(remote.updated_at, local.updated_at)) {
@@ -118,7 +173,7 @@ export async function synchronizeReadingData(
   );
   const localSessionsById = new Map(localSessions.map((session) => [session.id, session]));
   const sessionsToPush = new Map<string, LocalSession>();
-  for (const value of remoteSessions ?? []) {
+  for (const value of availableRemoteSessions) {
     const remote = value as CloudSession;
     const local = localSessionsById.get(remote.id);
     if (!local) {
@@ -130,12 +185,12 @@ export async function synchronizeReadingData(
     }
   }
   for (const local of localSessions) {
-    if (!(remoteSessions ?? []).some((value) => (value as CloudSession).id === local.id)) {
+    if (!availableRemoteSessions.some((value) => (value as CloudSession).id === local.id)) {
       sessionsToPush.set(local.id, local);
     }
   }
 
-  const cloudSessions = [...(remoteSessions ?? [])] as CloudSession[];
+  const cloudSessions = [...availableRemoteSessions] as CloudSession[];
   const sessionIds = new Set([...cloudSessions.map((session) => session.id), ...localSessions.map((session) => session.id)]);
   const sessionIdList = [...sessionIds];
   let remoteSegments: CloudSegment[] = [];

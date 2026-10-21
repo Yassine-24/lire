@@ -1,20 +1,23 @@
 import { Platform } from 'react-native';
 
 export const colors = {
-  background: '#0D1013',
-  surface: '#15191E',
-  surfaceRaised: '#1D232A',
-  text: '#F2F5F7',
-  textMuted: '#929DA8',
-  accent: '#FF7029',
-  accentStrong: '#E65313',
+  background: '#0A0D10',
+  surface: '#13171C',
+  surfaceRaised: '#1B2127',
+  surfaceElevated: '#242B32',
+  text: '#F5F2EE',
+  textMuted: '#9AA3AB',
+  accent: '#FF762F',
+  accentStrong: '#E95E1C',
   accentSoft: '#2C1B13',
-  accentLight: '#FFA06D',
-  border: '#2B323A',
+  accentLight: '#FFAD7B',
+  border: '#293139',
   white: '#FFFFFF',
+  danger: '#FF7168',
+  dangerSoft: '#351C1C',
   warning: '#F4C16F',
   warningSurface: '#352719',
-  tab: '#111519',
+  tab: '#101418',
 };
 
 export const fonts = {
@@ -24,7 +27,7 @@ export const fonts = {
 };
 
 export const spacing = {
-  page: 22,
+  page: 20,
   card: 18,
-  section: 28,
+  section: 26,
 };

@@ -5,6 +5,7 @@ const baseSchema = [
   "CREATE TABLE IF NOT EXISTS reading_sessions (id TEXT PRIMARY KEY NOT NULL, book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE, status TEXT NOT NULL CHECK (status IN ('running', 'paused', 'completed')), started_at TEXT NOT NULL, completed_at TEXT);",
   'CREATE TABLE IF NOT EXISTS session_segments (id TEXT PRIMARY KEY NOT NULL, session_id TEXT NOT NULL REFERENCES reading_sessions(id) ON DELETE CASCADE, started_at TEXT NOT NULL, ended_at TEXT CHECK (ended_at IS NULL OR ended_at >= started_at));',
   "CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);",
+  "CREATE TABLE IF NOT EXISTS deleted_book_ids (user_id TEXT NOT NULL, book_id TEXT NOT NULL, deleted_at TEXT NOT NULL, PRIMARY KEY (user_id, book_id));",
   'CREATE INDEX IF NOT EXISTS books_status_updated_idx ON books(status, updated_at DESC);',
   'CREATE INDEX IF NOT EXISTS sessions_book_completed_idx ON reading_sessions(book_id, completed_at DESC);',
   'CREATE INDEX IF NOT EXISTS segments_session_started_idx ON session_segments(session_id, started_at);',

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Animated, Linking, Pressable, Text, TextInput, View } from 'react-native';
+import { Animated, Linking, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Button, Card, Chip, Eyebrow, Field, Page, PageTitle, StatusMessage } from '@/components/ui';
+import { Button, Card, Chip, Eyebrow, Field, Page, PageTitle, SearchField, SectionTitle, StatusMessage } from '@/components/ui';
+import { BookCover, coverFromIsbn } from '@/components/BookCover';
 import { createBook, type BookStatus } from '@/data/books';
 import { searchCatalog, type CatalogBook } from '@/data/catalog';
-import { BookCover, coverFromIsbn } from '@/components/BookCover';
 import { colors, fonts } from '@/design/tokens';
 
 const statusOptions: { key: BookStatus; label: string }[] = [
@@ -21,31 +21,35 @@ function parseCurrentPage(value: string): number | null {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function returnToPreviousScreen() {
-  if (router.canGoBack()) {
-    router.back();
-    return;
-  }
+function parsePageCount(value: string, catalogCount: number | null): number | null | undefined {
+  if (!value.trim()) return catalogCount;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) return undefined;
+  return parsed;
+}
 
-  router.replace('/(tabs)/library');
+function returnToPreviousScreen() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/(tabs)/library');
 }
 
 export default function NewBookScreen() {
   const db = useSQLiteContext();
-  const [title, setTitle] = useState('');
-  const [author, setAuthor] = useState('');
-  const [currentPage, setCurrentPage] = useState('');
-  const [pageCount, setPageCount] = useState('');
-  const [isbn, setIsbn] = useState('');
-  const [status, setStatus] = useState<BookStatus>('reading');
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
   const [catalogQuery, setCatalogQuery] = useState('');
   const [catalogResults, setCatalogResults] = useState<CatalogBook[]>([]);
   const [catalogSearched, setCatalogSearched] = useState(false);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState('');
   const [addingCatalogKey, setAddingCatalogKey] = useState('');
+  const [status, setStatus] = useState<BookStatus>('reading');
+  const [currentPage, setCurrentPage] = useState('');
+  const [pageCount, setPageCount] = useState('');
+  const [manualOpen, setManualOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [author, setAuthor] = useState('');
+  const [isbn, setIsbn] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [addedTitle, setAddedTitle] = useState('');
   const [addedMotion] = useState(() => new Animated.Value(0.82));
 
@@ -55,47 +59,11 @@ export default function NewBookScreen() {
     setTimeout(() => router.replace({ pathname: '/book/[id]', params: { id } }), 760);
   }
 
-  async function saveBook() {
-    if (!title.trim()) {
-      setError('A title is needed to add this book.');
-      return;
-    }
-
-    const parsedCurrentPage = parseCurrentPage(currentPage);
-    if (parsedCurrentPage === null) {
-      setError('Enter the current page as a whole number of zero or more.');
-      return;
-    }
-    const parsedPageCount = pageCount.trim() ? Number(pageCount) : null;
-    if (parsedPageCount !== null && (!Number.isSafeInteger(parsedPageCount) || parsedPageCount < 1)) {
-      setError('Total pages must be a positive whole number, or leave it blank.');
-      return;
-    }
-    if (parsedPageCount !== null && parsedCurrentPage > parsedPageCount) {
-      setError('Current page cannot be greater than the total page count.');
-      return;
-    }
-
-    setSaving(true);
-    setError('');
-    try {
-      const id = await createBook(db, {
-        title,
-        author,
-        status,
-        currentPage: parsedCurrentPage,
-        pageCount: parsedPageCount,
-        isbn,
-        coverUrl: coverFromIsbn(isbn),
-      });
-      finishAddingBook(id, title.trim());
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'This book could not be saved.');
-      setSaving(false);
-    }
-  }
-
   async function searchBooks() {
+    if (catalogQuery.trim().length < 2) {
+      setCatalogError('Enter at least two characters to search.');
+      return;
+    }
     setCatalogLoading(true);
     setCatalogError('');
     setCatalogSearched(true);
@@ -103,23 +71,33 @@ export default function NewBookScreen() {
       setCatalogResults(await searchCatalog(catalogQuery));
     } catch (cause) {
       setCatalogResults([]);
-      setCatalogError(cause instanceof Error ? cause.message : 'The book catalog could not be searched.');
+      setCatalogError(cause instanceof Error ? cause.message : 'The catalog could not be searched.');
     } finally {
       setCatalogLoading(false);
     }
   }
 
-  async function addCatalogBook(book: CatalogBook) {
-    const parsedCurrentPage = parseCurrentPage(currentPage);
-    if (parsedCurrentPage === null) {
+  function readingPosition(catalogTotal: number | null): { currentPage: number; pageCount: number | null } | null {
+    const nextCurrentPage = parseCurrentPage(currentPage);
+    const nextPageCount = parsePageCount(pageCount, catalogTotal);
+    if (nextCurrentPage === null) {
       setCatalogError('Enter the current page as a whole number of zero or more.');
-      return;
+      return null;
     }
-    if (book.pageCount !== null && parsedCurrentPage > book.pageCount) {
-      setCatalogError('Current page cannot be greater than the page total from Open Library.');
-      return;
+    if (nextPageCount === undefined) {
+      setCatalogError('Total pages must be a positive whole number, or blank.');
+      return null;
     }
+    if (nextPageCount !== null && nextCurrentPage > nextPageCount) {
+      setCatalogError('Current page cannot be greater than the total page count.');
+      return null;
+    }
+    return { currentPage: nextCurrentPage, pageCount: nextPageCount };
+  }
 
+  async function addCatalogBook(book: CatalogBook) {
+    const position = readingPosition(book.pageCount);
+    if (!position) return;
     setAddingCatalogKey(book.key);
     setCatalogError('');
     try {
@@ -127,8 +105,7 @@ export default function NewBookScreen() {
         title: book.title,
         author: book.author ?? '',
         status,
-        currentPage: parsedCurrentPage,
-        pageCount: book.pageCount,
+        ...position,
         catalogId: book.key,
         isbn: book.isbn,
         coverUrl: book.coverUrl,
@@ -141,208 +118,146 @@ export default function NewBookScreen() {
     }
   }
 
+  async function saveManualBook() {
+    if (!title.trim()) {
+      setError('Add a title before saving.');
+      return;
+    }
+    const position = readingPosition(null);
+    if (!position) return;
+    setSaving(true);
+    setError('');
+    setCatalogError('');
+    try {
+      const id = await createBook(db, {
+        title,
+        author,
+        status,
+        ...position,
+        isbn,
+        coverUrl: coverFromIsbn(isbn),
+      });
+      finishAddingBook(id, title.trim());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'This book could not be saved.');
+      setSaving(false);
+    }
+  }
+
   return (
-    <Page>
-      <View style={{ gap: 9 }}>
+    <Page contentStyle={{ gap: 16 }}>
+      <View style={{ gap: 7 }}>
         <Pressable accessibilityRole="link" onPress={returnToPreviousScreen} style={{ paddingVertical: 4 }}>
-          <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
-            ‹ Back
-          </Text>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>‹  Back to library</Text>
         </Pressable>
-        <Eyebrow>Make a place on your shelf</Eyebrow>
+        <Eyebrow>Build your shelf</Eyebrow>
         <PageTitle>Add a book</PageTitle>
-        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
-          Search a book catalog or enter the details yourself.
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }}>
+          Find the edition you own. Lire will fill in its cover and page total when available.
         </Text>
       </View>
 
-      <View style={{ gap: 12 }}>
-        <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
-          Add it to
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {statusOptions.map((option) => (
-            <Chip
-              key={option.key}
-              label={option.label}
-              active={status === option.key}
-              onPress={() => setStatus(option.key)}
-            />
-          ))}
+      <Card dark style={{ borderColor: '#54301E', padding: 17 }}>
+        <View style={{ gap: 5 }}>
+          <Eyebrow>01 / Find your book</Eyebrow>
+          <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 19, fontWeight: '700' }}>Search Open Library</Text>
         </View>
-      </View>
-
-      <Card style={{ gap: 9 }}>
-        <Eyebrow>Reading position</Eyebrow>
-        <Field
-          label="Total pages (optional)"
-          keyboardType="number-pad"
-          onChangeText={setPageCount}
-          placeholder="Catalog total fills this in"
-          returnKeyType="done"
-          value={pageCount}
-        />
-        <Field
-          label="Current page (optional)"
-          keyboardType="number-pad"
-          onChangeText={setCurrentPage}
-          placeholder="0"
-          returnKeyType="done"
-          value={currentPage}
-        />
-      </Card>
-
-      <Card>
-        <Eyebrow>Search Open Library</Eyebrow>
-        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 }}>
-          Find a title or author in the public book catalog. Searching requires an internet connection.
-        </Text>
-        <TextInput
-          accessibilityLabel="Search the book catalog"
-          autoCapitalize="none"
+        <SearchField
+          accessibilityLabel="Search Open Library"
           editable={!catalogLoading}
-          onChangeText={(value) => {
-            setCatalogQuery(value);
-            setCatalogResults([]);
-            setCatalogSearched(false);
-            setCatalogError('');
-          }}
+          onChangeText={(value) => { setCatalogQuery(value); setCatalogResults([]); setCatalogSearched(false); setCatalogError(''); }}
           onSubmitEditing={() => void searchBooks()}
-          placeholder="Title or author"
-          placeholderTextColor={colors.textMuted}
-          returnKeyType="search"
-          style={{
-            minHeight: 50,
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-            borderWidth: 1,
-            borderRadius: 15,
-            color: colors.text,
-            fontFamily: fonts.body,
-            fontSize: 14,
-            paddingHorizontal: 15,
-          }}
+          placeholder="Title, author, or ISBN"
           value={catalogQuery}
         />
         <Button disabled={catalogLoading || catalogQuery.trim().length < 2} onPress={() => void searchBooks()}>
-          {catalogLoading ? 'Searching…' : 'Search catalog'}
+          {catalogLoading ? 'Searching…' : 'Search books'}
         </Button>
-        {catalogError ? <StatusMessage warning>{catalogError}</StatusMessage> : null}
-        {catalogSearched && !catalogLoading && !catalogError && catalogResults.length === 0 ? (
-          <StatusMessage>No matching books found. Try another title or author.</StatusMessage>
-        ) : null}
-        {catalogResults.map((book) => (
-          <Pressable
-            key={book.key}
-            accessibilityRole="button"
-            accessibilityLabel={`Add ${book.title}${book.author ? ` by ${book.author}` : ''} to Lire`}
-            accessibilityState={{ disabled: addingCatalogKey.length > 0 }}
-            disabled={addingCatalogKey.length > 0}
-            onPress={() => void addCatalogBook(book)}
-            style={({ pressed }) => ({
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.surfaceRaised,
-              padding: 13,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-              opacity: pressed ? 0.75 : 1,
-            })}
-          >
-            <BookCover title={book.title} uri={book.coverUrl} width={42} height={58} />
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 16 }}>
-                {book.title}
-              </Text>
-              <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>
-                {book.author || 'Author not listed'}
-                {book.firstPublishYear ? ` · ${book.firstPublishYear}` : ''}
-                {book.pageCount ? ` · ${book.pageCount} pages` : ''}
-              </Text>
-              {book.isbn ? <Text style={{ color: colors.textMuted, fontFamily: fonts.mono, fontSize: 9 }}>ISBN {book.isbn}</Text> : null}
-            </View>
-            <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>
-              {addingCatalogKey === book.key ? 'Adding…' : 'Add'}
-            </Text>
-          </Pressable>
-        ))}
-        <View style={{ alignItems: 'center', gap: 4 }}>
-          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>
-            Catalog data and page totals from
-          </Text>
-          <Pressable
-            accessibilityRole="link"
-            onPress={() => void Linking.openURL('https://openlibrary.org').catch(() => {})}
-          >
-            <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>
-              Open Library
-            </Text>
-          </Pressable>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 }}>
+          Catalog search needs an internet connection. Your library stays on this device.
+        </Text>
+      </Card>
+
+      {catalogError ? <StatusMessage warning>{catalogError}</StatusMessage> : null}
+      {catalogSearched && !catalogLoading && !catalogError && catalogResults.length === 0 ? (
+        <Card><Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>No matching editions. Try another title or add the details manually.</Text></Card>
+      ) : null}
+      {catalogResults.length > 0 ? (
+        <View style={{ gap: 9 }}>
+          <SectionTitle detail={`${catalogResults.length} found`}>Choose an edition</SectionTitle>
+          {catalogResults.map((book) => (
+            <Pressable
+              key={book.key}
+              accessibilityRole="button"
+              accessibilityLabel={`Add ${book.title}${book.author ? ` by ${book.author}` : ''} to Lire`}
+              accessibilityState={{ disabled: addingCatalogKey.length > 0 }}
+              disabled={addingCatalogKey.length > 0}
+              onPress={() => void addCatalogBook(book)}
+              style={({ pressed }) => ({ borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.78 : 1 })}
+            >
+              <BookCover title={book.title} uri={book.coverUrl} width={47} height={65} />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text numberOfLines={2} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 15, lineHeight: 20, fontWeight: '700' }}>{book.title}</Text>
+                <Text numberOfLines={1} style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>
+                  {book.author || 'Author not listed'}{book.firstPublishYear ? ` · ${book.firstPublishYear}` : ''}
+                </Text>
+                <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 9 }}>{book.pageCount ? `${book.pageCount} PAGES` : 'PAGE TOTAL UNKNOWN'}</Text>
+              </View>
+              <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 11, fontWeight: '700' }}>{addingCatalogKey === book.key ? 'Adding…' : 'ADD  +'}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      <Card>
+        <Eyebrow>02 / Make it yours</Eyebrow>
+        <SectionTitle>Your reading setup</SectionTitle>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 }}>
+          The edition’s page total comes from the catalog. You can adjust it and set your current page here.
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+          {statusOptions.map((option) => <Chip key={option.key} label={option.label} active={status === option.key} onPress={() => setStatus(option.key)} />)}
+        </View>
+        <View style={{ flexDirection: 'row', gap: 9 }}>
+          <Field style={{ flex: 1 }} label="Total pages" keyboardType="number-pad" onChangeText={setPageCount} placeholder="From catalog" value={pageCount} />
+          <Field style={{ flex: 1 }} label="Current page" keyboardType="number-pad" onChangeText={setCurrentPage} placeholder="0" value={currentPage} />
         </View>
       </Card>
 
-      <View style={{ gap: 6 }}>
-        <Eyebrow>Manual entry</Eyebrow>
-        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 }}>
-          Or add a title that is not in the catalog.
-        </Text>
-      </View>
+      <Card style={{ padding: 16 }}>
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded: manualOpen }} onPress={() => setManualOpen((open) => !open)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ gap: 4 }}>
+            <Eyebrow>Skip the catalog</Eyebrow>
+            <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 17, fontWeight: '700' }}>Add manually</Text>
+          </View>
+          <Text style={{ color: colors.accent, fontFamily: fonts.mono, fontSize: 20 }}>{manualOpen ? '−' : '+'}</Text>
+        </Pressable>
+        {manualOpen ? (
+          <View style={{ gap: 11 }}>
+            <Field label="Title" autoCapitalize="words" onChangeText={setTitle} placeholder="The book’s title" value={title} />
+            <Field label="Author (optional)" autoCapitalize="words" onChangeText={setAuthor} placeholder="Who wrote it?" value={author} />
+            <Field label="ISBN (optional)" autoCapitalize="characters" onChangeText={setIsbn} placeholder="ISBN-10 or ISBN-13" value={isbn} />
+            {error ? <StatusMessage warning>{error}</StatusMessage> : null}
+            <Button disabled={saving} onPress={() => void saveManualBook()}>{saving ? 'Saving…' : 'Add to library'}</Button>
+          </View>
+        ) : null}
+      </Card>
 
-      {error ? <StatusMessage warning>{error}</StatusMessage> : null}
-
-      <View style={{ gap: 18 }}>
-        <Field
-          label="Title"
-          autoCapitalize="words"
-          onChangeText={setTitle}
-          placeholder="The book’s title"
-          returnKeyType="next"
-          value={title}
-        />
-        <Field
-          label="Author (optional)"
-          autoCapitalize="words"
-          onChangeText={setAuthor}
-          placeholder="Who wrote it?"
-          returnKeyType="done"
-          value={author}
-        />
-        <Field
-          label="ISBN (optional)"
-          autoCapitalize="characters"
-          onChangeText={setIsbn}
-          placeholder="ISBN-10 or ISBN-13"
-          returnKeyType="done"
-          value={isbn}
-        />
-      </View>
+      <Pressable accessibilityRole="link" onPress={() => void Linking.openURL('https://openlibrary.org').catch(() => {})} style={{ alignSelf: 'center', paddingVertical: 2 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 10 }}>Catalog data from Open Library</Text>
+      </Pressable>
 
       {addedTitle ? (
-        <Animated.View
-          accessible
-          accessibilityLiveRegion="polite"
-          style={{ opacity: addedMotion, transform: [{ scale: addedMotion }], borderRadius: 16, borderWidth: 1, borderColor: colors.accent, backgroundColor: colors.accentSoft, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
-        >
-          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.accentStrong, alignItems: 'center', justifyContent: 'center' }}>
+        <Animated.View accessible accessibilityLiveRegion="polite" style={{ opacity: addedMotion, transform: [{ scale: addedMotion }], borderRadius: 17, borderWidth: 1, borderColor: '#724326', backgroundColor: colors.accentSoft, padding: 15, flexDirection: 'row', alignItems: 'center', gap: 11 }}>
+          <View style={{ width: 32, height: 32, borderRadius: 12, backgroundColor: colors.accentStrong, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ color: colors.white, fontFamily: fonts.body, fontSize: 18, fontWeight: '700' }}>✓</Text>
           </View>
           <View style={{ flex: 1, gap: 3 }}>
-            <Text style={{ color: colors.accentLight, fontFamily: fonts.body, fontSize: 11, fontWeight: '700', letterSpacing: 1 }}>ADDED TO YOUR LIBRARY</Text>
-            <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 16 }}>{addedTitle}</Text>
+            <Text style={{ color: colors.accentLight, fontFamily: fonts.body, fontSize: 9, fontWeight: '700', letterSpacing: 1 }}>ADDED TO YOUR LIBRARY</Text>
+            <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 15, fontWeight: '700' }}>{addedTitle}</Text>
           </View>
         </Animated.View>
       ) : null}
-
-      <View style={{ gap: 11, marginTop: 5 }}>
-        <Button disabled={saving} onPress={() => void saveBook()}>
-          {saving ? 'Saving…' : 'Add to library'}
-        </Button>
-        <Button variant="outline" onPress={returnToPreviousScreen}>
-          Cancel
-        </Button>
-      </View>
     </Page>
   );
 }

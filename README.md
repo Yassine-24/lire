@@ -38,7 +38,7 @@ Without Supabase settings, Lire remains usable offline. To enable accounts, clou
 4. Add `lire://auth/callback` to the Supabase Auth redirect URL allow list and configure email delivery for confirmation and password reset.
 5. Restart Expo after changing the environment file.
 
-The SQL migration separates public catalog metadata from private `user_books`, `reading_sessions`, and `session_segments`, enables row-level security, and grants access only to the account owner. The delete-account Edge Function uses the server-side service role to delete the Auth user; keep that key in Supabase function secrets only. Sync merges rows by `updated_at` (last write wins). Active timers are excluded, so they are not handed between devices.
+The SQL migration separates public catalog metadata from private `user_books`, `reading_sessions`, and `session_segments`, enables row-level security, and grants access only to the account owner. The delete-account Edge Function uses the server-side service role to delete the Auth user; keep that key in Supabase function secrets only. Sync merges rows by `updated_at` (last write wins). Account-scoped deletion markers keep removed books from returning on another device. Active timers are excluded, so they are not handed between devices.
 
 ## Project docs
 

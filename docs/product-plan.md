@@ -57,7 +57,7 @@ Goodreads is a one-time CSV import, not a live integration. The reader previews 
 
 The mobile app uses SQLite as its local source of truth. Books and sessions have stable IDs. A session contains timestamped segments; pausing closes a segment and resuming starts another. The app allows one unfinished timer per installation. Elapsed time is computed from saved timestamps, not a background counter.
 
-The optional Supabase backend keeps catalog metadata separate from each reader's `user_books` and private session history. Row-level security grants personal rows only to their owner. Sync uses `updated_at` with last-write-wins for matching IDs. Completed sessions sync; running and paused sessions remain local so the app never implies cross-device timer handoff. Account deletion removes the Auth user and cascades the reader's cloud data.
+The optional Supabase backend keeps catalog metadata separate from each reader's `user_books` and private session history. Row-level security grants personal rows only to their owner. Sync uses `updated_at` with last-write-wins for matching IDs. Account-scoped deletion markers carry book removals across devices. Completed sessions sync; running and paused sessions remain local so the app never implies cross-device timer handoff. Account deletion removes the Auth user and cascades the reader's cloud data.
 
 Open Library lookup is normalized behind a cacheable Edge Function when Supabase is configured. A local direct-API fallback keeps catalog search usable before backend setup. Provider credentials and service-role keys stay server-side.
 

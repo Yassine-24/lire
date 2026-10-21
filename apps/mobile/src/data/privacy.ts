@@ -18,5 +18,6 @@ export async function clearLocalReadingData(db: SQLiteDatabase): Promise<void> {
     await transaction.runAsync('DELETE FROM reading_sessions');
     await transaction.runAsync('DELETE FROM books');
     await transaction.runAsync('DELETE FROM app_settings');
+    await transaction.runAsync('DELETE FROM deleted_book_ids');
   });
 }

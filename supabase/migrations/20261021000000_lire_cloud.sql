@@ -35,6 +35,13 @@ create table if not exists public.user_books (
   unique (id, user_id)
 );
 
+create table if not exists public.user_book_deletions (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  book_id uuid not null,
+  deleted_at timestamptz not null,
+  primary key (user_id, book_id)
+);
+
 create table if not exists public.reading_sessions (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -63,16 +70,19 @@ create index if not exists session_segments_user_session_idx on public.session_s
 
 alter table public.catalog_books enable row level security;
 alter table public.user_books enable row level security;
+alter table public.user_book_deletions enable row level security;
 alter table public.reading_sessions enable row level security;
 alter table public.session_segments enable row level security;
 
 revoke all on table public.catalog_books from anon, authenticated;
 revoke all on table public.user_books from anon, authenticated;
+revoke all on table public.user_book_deletions from anon, authenticated;
 revoke all on table public.reading_sessions from anon, authenticated;
 revoke all on table public.session_segments from anon, authenticated;
 
 grant select on table public.catalog_books to anon, authenticated;
 grant select, insert, update, delete on table public.user_books to authenticated;
+grant select, insert, update, delete on table public.user_book_deletions to authenticated;
 grant select, insert, update, delete on table public.reading_sessions to authenticated;
 grant select, insert, update, delete on table public.session_segments to authenticated;
 
@@ -87,6 +97,12 @@ drop policy if exists "Signed-in readers can refresh catalog entries" on public.
 drop policy if exists "Readers manage their own books" on public.user_books;
 create policy "Readers manage their own books"
 on public.user_books for all to authenticated
+using ((select auth.uid()) is not null and (select auth.uid()) = user_id)
+with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
+
+drop policy if exists "Readers manage their own book deletions" on public.user_book_deletions;
+create policy "Readers manage their own book deletions"
+on public.user_book_deletions for all to authenticated
 using ((select auth.uid()) is not null and (select auth.uid()) = user_id)
 with check ((select auth.uid()) is not null and (select auth.uid()) = user_id);
 

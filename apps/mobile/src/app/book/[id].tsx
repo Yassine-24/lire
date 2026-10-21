@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { getBook, getBookSessionHistory, getCurrentSession, updateBookDetails, updateBookProgress, updateBookStatus, type Book, type BookStatus, type CurrentSession, type SessionHistoryItem } from '@/data/books';
+import { deleteBook, getBook, getBookSessionHistory, getCurrentSession, updateBookDetails, updateBookProgress, updateBookStatus, type Book, type BookStatus, type CurrentSession, type SessionHistoryItem } from '@/data/books';
 import { correctSessionDuration, finishSession, pauseSession, resumeSession, startSession } from '@/data/reading';
-import { Button, Card, Chip, Eyebrow, Field, Page, PageTitle, SectionTitle, StatusMessage } from '@/components/ui';
+import { Button, Card, Chip, ConfirmDialog, Eyebrow, Field, Page, PageTitle, SectionTitle, StatusMessage } from '@/components/ui';
 import { BookCover, coverFromIsbn } from '@/components/BookCover';
 import { colors, fonts } from '@/design/tokens';
+import { supabase } from '@/data/supabase';
 import { calendarDaysInclusive, formatDuration, localDateInput, sumSegmentSeconds } from '@/domain/time';
 
 const statusOptions: { key: BookStatus; label: string }[] = [
@@ -50,6 +51,9 @@ export default function BookDetailScreen() {
   const [detailsMessage, setDetailsMessage] = useState('');
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [sessionMinutesDraft, setSessionMinutesDraft] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const load = useCallback(async () => {
     if (!id) {
@@ -186,6 +190,22 @@ export default function BookDetailScreen() {
     }
   }
 
+  async function removeBook() {
+    if (!book) return;
+    setDeleteBusy(true);
+    setDeleteError('');
+    try {
+      const auth = supabase ? await supabase.auth.getSession() : null;
+      await deleteBook(db, book.id, auth?.data.session?.user.id);
+      setDeleteDialogOpen(false);
+      router.replace('/(tabs)/library');
+    } catch (cause) {
+      setDeleteError(cause instanceof Error ? cause.message : 'This book could not be removed.');
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
   async function saveSessionCorrection(item: SessionHistoryItem) {
     const minutes = Number(sessionMinutesDraft);
     if (!Number.isSafeInteger(minutes) || minutes < 0) {
@@ -239,6 +259,35 @@ export default function BookDetailScreen() {
       </View>
 
       {error ? <StatusMessage warning>{error}</StatusMessage> : null}
+
+      {session && session.book_id !== id ? (
+        <Card style={{ borderColor: '#664326' }}>
+          <Eyebrow>Another session is active</Eyebrow>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }}>
+            Your timer is with {session.book_title}. Finish or pause it before starting this book.
+          </Text>
+          <Button variant="outline" onPress={() => router.push('/(tabs)')}>Go to today</Button>
+        </Card>
+      ) : matchingSession ? (
+        <Card dark style={{ padding: 18, borderColor: matchingSession.status === 'running' ? '#6A402A' : colors.border }}>
+          <Eyebrow>{matchingSession.status === 'running' ? 'Reading now' : 'Paused · ready to resume'}</Eyebrow>
+          <Text style={{ color: colors.text, fontFamily: fonts.mono, fontSize: 30, fontWeight: '600' }}>{formatDuration(sessionSeconds)}</Text>
+          <View style={{ flexDirection: 'row', gap: 9 }}>
+            <Button variant="soft" disabled={busy} style={{ flex: 1 }} onPress={() => void perform(matchingSession.status === 'running' ? 'pause' : 'resume')}>
+              {matchingSession.status === 'running' ? 'Pause' : 'Resume'}
+            </Button>
+            <Button variant="outline" disabled={busy} style={{ flex: 1 }} onPress={() => void perform('finish')}>Finish</Button>
+          </View>
+        </Card>
+      ) : (
+        <Card dark style={{ borderColor: '#54301E', padding: 16 }}>
+          <Eyebrow>Ready for a session?</Eyebrow>
+          <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 18, fontWeight: '700' }}>Pick up where you left off.</Text>
+          <Button disabled={busy || Boolean(session)} onPress={() => void perform('start')}>
+            {busy ? 'Starting…' : 'Start reading'}
+          </Button>
+        </Card>
+      )}
 
       <Card style={{ padding: 20 }}>
         <Eyebrow>Reading time</Eyebrow>
@@ -332,41 +381,6 @@ export default function BookDetailScreen() {
         <Button variant="outline" onPress={() => void saveBookDetails()}>Save book details</Button>
       </Card>
 
-      {session && session.book_id !== id ? (
-        <StatusMessage warning>
-          Your timer is currently with {session.book_title}. Finish or pause that session before starting another.
-        </StatusMessage>
-      ) : matchingSession ? (
-        <Card dark style={{ padding: 20 }}>
-          <Eyebrow>{matchingSession.status === 'running' ? 'Reading now' : 'Session paused'}</Eyebrow>
-          <Text style={{ color: colors.white, fontFamily: fonts.display, fontSize: 34 }}>
-            {formatDuration(sessionSeconds)}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Button
-              variant="soft"
-              disabled={busy}
-              style={{ flex: 1 }}
-              onPress={() => void perform(matchingSession.status === 'running' ? 'pause' : 'resume')}
-            >
-              {matchingSession.status === 'running' ? 'Pause' : 'Resume'}
-            </Button>
-            <Button
-              variant="outline"
-              disabled={busy}
-              style={{ flex: 1, borderColor: colors.border }}
-              onPress={() => void perform('finish')}
-            >
-              Finish
-            </Button>
-          </View>
-        </Card>
-      ) : (
-        <Button disabled={busy || Boolean(session)} onPress={() => void perform('start')}>
-          {busy ? 'Starting…' : 'Start a reading session'}
-        </Button>
-      )}
-
       <View style={{ gap: 12 }}>
         <SectionTitle>On your shelf</SectionTitle>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -426,6 +440,25 @@ export default function BookDetailScreen() {
           </View>
         )}
       </View>
+
+      <Card style={{ borderColor: '#4D2C2A' }}>
+        <Eyebrow>Library actions</Eyebrow>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 }}>
+          Remove this book and its saved reading sessions from your library.
+        </Text>
+        <Button variant="danger" onPress={() => { setDeleteError(''); setDeleteDialogOpen(true); }}>Remove from library</Button>
+      </Card>
+
+      <ConfirmDialog
+        visible={deleteDialogOpen}
+        title={`Remove “${book.title}”?`}
+        detail="The book and its saved sessions will be removed from this device and, when sync is enabled, your account."
+        confirmLabel="Remove book"
+        onConfirm={() => void removeBook()}
+        onCancel={() => { setDeleteDialogOpen(false); setDeleteError(''); }}
+        busy={deleteBusy}
+        warning={deleteError || undefined}
+      />
     </Page>
   );
 }

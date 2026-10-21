@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,19 +15,27 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, spacing } from '@/design/tokens';
 
-export function Page({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
+export function Page({
+  children,
+  scroll = true,
+  contentStyle,
+}: {
+  children: ReactNode;
+  scroll?: boolean;
+  contentStyle?: StyleProp<ViewStyle>;
+}) {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       {scroll ? (
         <ScrollView
-          contentContainerStyle={styles.pageContent}
+          contentContainerStyle={[styles.pageContent, contentStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {children}
         </ScrollView>
       ) : (
-        <View style={styles.pageContent}>{children}</View>
+        <View style={[styles.pageContent, contentStyle]}>{children}</View>
       )}
     </SafeAreaView>
   );
@@ -128,10 +137,49 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       onPress={onPress}
-      style={[styles.chip, active ? styles.chipActive : null]}
+      style={({ pressed }) => [styles.chip, active ? styles.chipActive : null, pressed ? styles.pressed : null]}
     >
       <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{label}</Text>
     </Pressable>
+  );
+}
+
+export function SearchField({
+  value,
+  onChangeText,
+  placeholder,
+  accessibilityLabel,
+  onSubmitEditing,
+  editable = true,
+}: Pick<TextInputProps, 'onSubmitEditing'> & {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  accessibilityLabel: string;
+  editable?: boolean;
+}) {
+  return (
+    <View style={[styles.searchField, !editable ? styles.disabled : null]}>
+      <Text accessibilityElementsHidden style={styles.searchIcon}>⌕</Text>
+      <TextInput
+        accessibilityLabel={accessibilityLabel}
+        autoCapitalize="none"
+        editable={editable}
+        onChangeText={onChangeText}
+        onSubmitEditing={onSubmitEditing}
+        placeholder={placeholder}
+        placeholderTextColor={colors.textMuted}
+        returnKeyType="search"
+        selectionColor={colors.accent}
+        style={styles.searchInput}
+        value={value}
+      />
+      {value ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={10} onPress={() => onChangeText('')} style={styles.clearSearch}>
+          <Text style={styles.clearSearchText}>×</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -158,6 +206,44 @@ export function StatusMessage({ children, warning = false }: { children: ReactNo
     <View style={[styles.message, warning ? styles.messageWarning : null]}>
       <Text style={[styles.messageText, warning ? styles.messageTextWarning : null]}>{children}</Text>
     </View>
+  );
+}
+
+export function ConfirmDialog({
+  visible,
+  title,
+  detail,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+  busy = false,
+  warning,
+}: {
+  visible: boolean;
+  title: string;
+  detail: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  busy?: boolean;
+  warning?: string;
+}) {
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onCancel}>
+      <View style={styles.dialogBackdrop}>
+        <View accessibilityViewIsModal style={styles.dialog}>
+          <View style={styles.dialogMark}><Text style={styles.dialogMarkText}>!</Text></View>
+          <Eyebrow>One last check</Eyebrow>
+          <Text style={styles.dialogTitle}>{title}</Text>
+          <Text style={styles.dialogDetail}>{detail}</Text>
+          {warning ? <StatusMessage warning>{warning}</StatusMessage> : null}
+          <Button variant="danger" disabled={busy} onPress={onConfirm}>
+            {busy ? 'Removing…' : confirmLabel}
+          </Button>
+          <Button variant="outline" disabled={busy} onPress={onCancel}>Keep it</Button>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -189,16 +275,16 @@ const styles = StyleSheet.create({
   },
   pageContent: {
     paddingHorizontal: spacing.page,
-    paddingTop: 18,
-    paddingBottom: 34,
-    gap: 22,
+    paddingTop: 16,
+    paddingBottom: 32,
+    gap: 19,
   },
   eyebrow: {
     color: colors.accent,
     fontFamily: fonts.body,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 2.1,
+    letterSpacing: 1.8,
     textTransform: 'uppercase',
   },
   pageTitle: {
@@ -206,7 +292,8 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 34,
     lineHeight: 40,
-    letterSpacing: -0.8,
+    letterSpacing: -0.9,
+    fontWeight: '700',
   },
   sectionHeading: {
     flexDirection: 'row',
@@ -217,7 +304,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.text,
     fontFamily: fonts.display,
-    fontSize: 22,
+    fontSize: 21,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   sectionDetail: {
     color: colors.textMuted,
@@ -228,18 +317,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: 22,
     padding: spacing.card,
-    gap: 12,
+    gap: 13,
   },
   cardDark: {
     backgroundColor: colors.surfaceRaised,
-    borderColor: colors.border,
+    borderColor: colors.surfaceElevated,
   },
   button: {
-    minHeight: 48,
+    minHeight: 50,
     paddingHorizontal: 16,
-    borderRadius: 15,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -247,15 +336,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentStrong,
   },
   buttonOutline: {
-    backgroundColor: 'transparent',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
   buttonSoft: {
     backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: '#54301F',
   },
   buttonDanger: {
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: '#6A302D',
   },
   buttonText: {
     fontFamily: fonts.body,
@@ -269,66 +362,107 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   buttonTextSoft: {
-    color: colors.accent,
-  },
-  buttonTextDanger: {
     color: colors.accentLight,
   },
+  buttonTextDanger: {
+    color: colors.danger,
+  },
   pressed: {
-    opacity: 0.82,
+    opacity: 0.8,
     transform: [{ scale: 0.99 }],
   },
   disabled: {
-    opacity: 0.45,
+    opacity: 0.48,
   },
   chip: {
-    minHeight: 38,
-    paddingHorizontal: 14,
+    minHeight: 37,
+    paddingHorizontal: 13,
     justifyContent: 'center',
-    borderRadius: 20,
+    borderRadius: 13,
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderWidth: 1,
   },
   chipActive: {
-    backgroundColor: colors.accentStrong,
-    borderColor: colors.accentStrong,
+    backgroundColor: colors.accentSoft,
+    borderColor: '#7F3C1D',
   },
   chipText: {
     color: colors.textMuted,
     fontFamily: fonts.body,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
   chipTextActive: {
-    color: colors.white,
+    color: colors.accentLight,
+  },
+  searchField: {
+    minHeight: 54,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingLeft: 14,
+    paddingRight: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  searchIcon: {
+    color: colors.accent,
+    fontFamily: fonts.display,
+    fontSize: 24,
+    lineHeight: 28,
+  },
+  searchInput: {
+    flex: 1,
+    minHeight: 50,
+    color: colors.text,
+    fontFamily: fonts.body,
+    fontSize: 14,
+  },
+  clearSearch: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearSearchText: {
+    color: colors.textMuted,
+    fontSize: 22,
+    lineHeight: 24,
   },
   fieldLabel: {
     color: colors.text,
     fontFamily: fonts.body,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 12,
     marginBottom: 8,
   },
   input: {
-    minHeight: 52,
+    minHeight: 51,
     borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 15,
     backgroundColor: colors.surface,
     paddingHorizontal: 14,
     color: colors.text,
     fontFamily: fonts.body,
-    fontSize: 15,
+    fontSize: 14,
   },
   message: {
     backgroundColor: colors.accentSoft,
+    borderColor: '#4C2B1C',
+    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 15,
   },
   messageWarning: {
     backgroundColor: colors.warningSurface,
+    borderColor: '#624521',
   },
   messageText: {
     color: colors.text,
@@ -371,5 +505,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     textAlign: 'center',
+  },
+  dialogBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: 'rgba(3, 6, 9, 0.82)',
+  },
+  dialog: {
+    padding: 22,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
+    gap: 12,
+  },
+  dialogMark: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: colors.dangerSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialogMarkText: {
+    color: colors.danger,
+    fontFamily: fonts.mono,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  dialogTitle: {
+    color: colors.text,
+    fontFamily: fonts.display,
+    fontSize: 23,
+    lineHeight: 29,
+    fontWeight: '700',
+  },
+  dialogDetail: {
+    color: colors.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 21,
   },
 });

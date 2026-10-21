@@ -43,10 +43,10 @@ async function migrateToV3(db: SQLiteDatabase): Promise<void> {
           'CREATE INDEX IF NOT EXISTS books_status_updated_idx ON books(status, updated_at DESC);',
           ...(has(sessionColumns, 'updated_at')
             ? []
-            : ['ALTER TABLE reading_sessions ADD COLUMN updated_at TEXT NOT NULL DEFAULT "";', 'UPDATE reading_sessions SET updated_at = COALESCE(completed_at, started_at) WHERE updated_at = "";']),
+            : ["ALTER TABLE reading_sessions ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';", "UPDATE reading_sessions SET updated_at = COALESCE(completed_at, started_at) WHERE updated_at = '';"]),
           ...(has(segmentColumns, 'updated_at')
             ? []
-            : ['ALTER TABLE session_segments ADD COLUMN updated_at TEXT NOT NULL DEFAULT "";', 'UPDATE session_segments SET updated_at = COALESCE(ended_at, started_at) WHERE updated_at = "";']),
+            : ["ALTER TABLE session_segments ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';", "UPDATE session_segments SET updated_at = COALESCE(ended_at, started_at) WHERE updated_at = '';"]),
           'PRAGMA user_version = 3;',
         ].join('\n'),
       );

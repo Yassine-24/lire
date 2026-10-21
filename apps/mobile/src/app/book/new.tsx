@@ -13,6 +13,15 @@ const statusOptions: { key: BookStatus; label: string }[] = [
   { key: 'finished', label: 'Finished' },
 ];
 
+function returnToPreviousScreen() {
+  if (router.canGoBack()) {
+    router.back();
+    return;
+  }
+
+  router.replace('/(tabs)/library');
+}
+
 export default function NewBookScreen() {
   const db = useSQLiteContext();
   const [title, setTitle] = useState('');
@@ -72,7 +81,7 @@ export default function NewBookScreen() {
   return (
     <Page>
       <View style={{ gap: 9 }}>
-        <Pressable accessibilityRole="link" onPress={() => router.back()} style={{ paddingVertical: 4 }}>
+        <Pressable accessibilityRole="link" onPress={returnToPreviousScreen} style={{ paddingVertical: 4 }}>
           <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
             ‹ Back
           </Text>
@@ -220,7 +229,7 @@ export default function NewBookScreen() {
         <Button disabled={saving} onPress={() => void saveBook()}>
           {saving ? 'Saving…' : 'Add to library'}
         </Button>
-        <Button variant="outline" onPress={() => router.back()}>
+        <Button variant="outline" onPress={returnToPreviousScreen}>
           Cancel
         </Button>
       </View>

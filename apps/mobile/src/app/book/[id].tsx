@@ -14,6 +14,15 @@ const statusOptions: { key: BookStatus; label: string }[] = [
   { key: 'finished', label: 'Finished' },
 ];
 
+function returnToPreviousScreen() {
+  if (router.canGoBack()) {
+    router.back();
+    return;
+  }
+
+  router.replace('/(tabs)/library');
+}
+
 export default function BookDetailScreen() {
   const db = useSQLiteContext();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
@@ -96,14 +105,14 @@ export default function BookDetailScreen() {
   if (!book) {
     return (
       <Page>
-        <Pressable accessibilityRole="link" onPress={() => router.back()}>
+        <Pressable accessibilityRole="link" onPress={returnToPreviousScreen}>
           <Text style={{ color: colors.accent, fontFamily: fonts.body, fontWeight: '700' }}>‹ Back</Text>
         </Pressable>
         <Card>
           <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 20 }}>
             {isLoading ? 'Loading book…' : error || 'This book is not in your library.'}
           </Text>
-          <Button variant="outline" onPress={() => router.back()}>Go back</Button>
+          <Button variant="outline" onPress={returnToPreviousScreen}>Go back</Button>
         </Card>
       </Page>
     );
@@ -112,7 +121,7 @@ export default function BookDetailScreen() {
   return (
     <Page>
       <View style={{ gap: 10 }}>
-        <Pressable accessibilityRole="link" onPress={() => router.back()} style={{ paddingVertical: 4 }}>
+        <Pressable accessibilityRole="link" onPress={returnToPreviousScreen} style={{ paddingVertical: 4 }}>
           <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
             ‹ Back
           </Text>

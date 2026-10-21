@@ -178,7 +178,7 @@ export default function LibraryScreen() {
                   accessibilityLabel={`${book.title}, ${statusLabels[book.status]}`}
                   onPress={() => router.push({ pathname: '/book/[id]', params: { id: book.id } })}
                   style={({ pressed }) => ({
-                    minHeight: tile ? 188 : 112,
+                    minHeight: tile ? undefined : 112,
                     borderRadius: tile ? 17 : 20,
                     backgroundColor: colors.surface,
                     borderWidth: 1,
@@ -189,7 +189,7 @@ export default function LibraryScreen() {
                     opacity: pressed ? 0.82 : 1,
                   })}
                 >
-                  <View style={{ flexDirection: tile ? 'column' : 'row', alignItems: tile ? 'stretch' : 'center', gap: tile ? 8 : 11, flex: 1 }}>
+                  <View style={{ flexDirection: tile ? 'column' : 'row', alignItems: tile ? 'stretch' : 'center', gap: tile ? 8 : 11, flex: tile ? undefined : 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: tile ? 8 : 11 }}>
                       <BookCover title={book.title} uri={book.cover_url} width={tile ? 58 : 48} height={tile ? 80 : 66} />
                       <View style={{ flex: 1, gap: tile ? 3 : 5 }}>
@@ -198,7 +198,7 @@ export default function LibraryScreen() {
                         {tile ? <Text style={{ color: colors.accentLight, fontFamily: fonts.body, fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>{statusLabels[book.status].toUpperCase()}</Text> : null}
                       </View>
                     </View>
-                    <View style={{ flex: 1, justifyContent: 'flex-end', gap: tile ? 5 : 7 }}>
+                    <View style={{ flex: tile ? undefined : 1, justifyContent: tile ? 'flex-start' : 'flex-end', gap: tile ? 5 : 7 }}>
                       {!tile ? <Text style={{ color: colors.accentLight, fontFamily: fonts.body, fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>{statusLabels[book.status].toUpperCase()}</Text> : null}
                       {book.page_count !== null || book.status === 'finished' ? (
                         <>

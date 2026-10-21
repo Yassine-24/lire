@@ -109,12 +109,14 @@ function StartReadingCard({
   books,
   busy,
   onStart,
+  onOpenBook,
   onAdd,
   onLibrary,
 }: {
   books: Book[];
   busy: string;
   onStart: (bookId: string) => void;
+  onOpenBook: (bookId: string) => void;
   onAdd: () => void;
   onLibrary: () => void;
 }) {
@@ -130,12 +132,19 @@ function StartReadingCard({
           <View style={{ gap: 9 }}>
             {books.slice(0, 2).map((book) => (
               <View key={book.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: 17, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-                <BookCover title={book.title} uri={book.cover_url} width={42} height={58} />
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 15, fontWeight: '700' }}>{book.title}</Text>
-                  <Text numberOfLines={1} style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>{book.author || 'Ready to read'} · {book.status === 'reading' ? 'IN PROGRESS' : 'NEXT UP'}</Text>
-                  {book.page_count ? <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 9 }}>PAGE {book.current_page} / {book.page_count}</Text> : null}
-                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${book.title} in your library`}
+                  onPress={() => onOpenBook(book.id)}
+                  style={({ pressed }) => ({ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.72 : 1 })}
+                >
+                  <BookCover title={book.title} uri={book.cover_url} width={42} height={58} />
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 15, fontWeight: '700' }}>{book.title}</Text>
+                    <Text numberOfLines={1} style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>{book.author || 'Ready to read'} · {book.status === 'reading' ? 'IN PROGRESS' : 'NEXT UP'}</Text>
+                    {book.page_count ? <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 9 }}>PAGE {book.current_page} / {book.page_count}</Text> : null}
+                  </View>
+                </Pressable>
                 <Button disabled={busy.length > 0} onPress={() => onStart(book.id)} style={{ minHeight: 42, paddingHorizontal: 13, borderRadius: 13 }}>
                   {busy === book.id ? 'Starting…' : 'Start'}
                 </Button>
@@ -295,6 +304,7 @@ export default function TodayScreen() {
           books={startBooks}
           busy={busyBookId}
           onStart={(bookId) => void beginReading(bookId)}
+          onOpenBook={(bookId) => router.push({ pathname: '/book/[id]', params: { id: bookId } })}
           onAdd={() => router.push('/book/new')}
           onLibrary={() => router.push('/(tabs)/library')}
         />
@@ -304,7 +314,12 @@ export default function TodayScreen() {
             <Eyebrow>{session.status === 'running' ? 'You’re reading' : 'Session paused'}</Eyebrow>
             <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 9, letterSpacing: 0.9 }}>{session.status === 'running' ? 'LIVE' : 'ON HOLD'}</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${session.book_title} in your library`}
+            onPress={() => router.push({ pathname: '/book/[id]', params: { id: session.book_id } })}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 13, opacity: pressed ? 0.75 : 1 })}
+          >
             <BookCover title={session.book_title} uri={activeBook?.cover_url ?? null} width={52} height={70} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text numberOfLines={2} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 19, lineHeight: 24, fontWeight: '700' }}>{session.book_title}</Text>
@@ -312,7 +327,7 @@ export default function TodayScreen() {
               {activeBook?.page_count ? <Text style={{ color: colors.accentLight, fontFamily: fonts.mono, fontSize: 9 }}>PAGE {activeBook.current_page} / {activeBook.page_count}</Text> : null}
             </View>
             <Text style={{ color: colors.text, fontFamily: fonts.mono, fontSize: 20, fontWeight: '600' }}>{clockDuration(sessionSeconds)}</Text>
-          </View>
+          </Pressable>
           {sessionAgeHours > 6 ? (
             <View style={{ gap: 10 }}>
               <StatusMessage warning>This timer has been running for more than six hours. Correct your reading time before closing it.</StatusMessage>
@@ -329,9 +344,6 @@ export default function TodayScreen() {
             </Button>
             <Button variant="outline" disabled={sessionBusy} style={{ flex: 1 }} onPress={() => void runSessionAction('finish')}>Finish session</Button>
           </View>
-          <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/book/[id]', params: { id: session.book_id } })} style={{ alignSelf: 'center', paddingVertical: 1 }}>
-            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, fontWeight: '600' }}>Book details →</Text>
-          </Pressable>
         </Card>
       )}
 

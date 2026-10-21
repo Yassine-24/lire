@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Create account · Lire{% endblock %}
+{% block content %}
+<section class="auth-layout">
+  <div class="auth-copy">
+    <span class="eyebrow">Your library stays yours</span>
+    <h1>Make room<br>for <span class="accent-text">a good book.</span></h1>
+    <p>Your books and reading history are saved to your private account, so you can return from any browser.</p>
+  </div>
+  <div class="panel auth-panel">
+    <span class="eyebrow">Get started</span>
+    <h2>Create your account</h2>
+    <form method="post" class="form-stack">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="form-field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small class="help-text">{{ field.help_text|safe }}</small>{% endif %}
+        {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      <button class="button button-wide" type="submit">Create account <span aria-hidden="true">↗</span></button>
+    </form>
+    <p class="auth-switch">Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+  </div>
+</section>
+{% endblock %}

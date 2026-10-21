@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Stats · Lire{% endblock %}
+{% block content %}
+<section class="page-heading"><div><span class="eyebrow">YOUR READING RHYTHM</span><h1>Stats<span class="accent-text">.</span></h1><p class="subheading">A look at time you’ve made for books.</p></div></section>
+<div class="stats-summary-grid">
+  <article class="panel stat-card stat-primary"><span class="eyebrow">TODAY</span><strong>{{ today_seconds|duration }}</strong><small>Reading time</small><span class="stat-symbol" aria-hidden="true">◷</span></article>
+  <article class="panel stat-card"><span class="eyebrow">THIS WEEK</span><strong>{{ weekly_seconds|duration }}</strong><small>{{ week_label }}</small></article>
+  <article class="panel stat-card"><span class="eyebrow">THIS MONTH</span><strong>{{ monthly_seconds|duration }}</strong><small>{{ month_label }}</small></article>
+  <article class="panel stat-card"><span class="eyebrow">READING DAYS</span><strong>{{ reading_days }}</strong><small>Days with saved time</small></article>
+</div>
+<div class="stats-columns">
+  <section class="panel chart-panel">
+    <div class="panel-heading"><div><span class="eyebrow">LAST 14 DAYS</span><h2>Daily reading time</h2></div><span class="panel-glyph" aria-hidden="true">⌁</span></div>
+    <div class="bar-chart" role="img" aria-label="Reading time over the last 14 days">
+      {% for item in chart %}
+      <div class="bar-column" title="{{ item.date|date:'M j' }} · {{ item.seconds|duration }}"><div class="bar-track"><span class="bar-value" style="height:{{ item.height }}%"></span></div><small>{{ item.date|date:"j" }}</small></div>
+      {% endfor %}
+    </div>
+    <div class="chart-axis"><span>{{ chart.0.date|date:"M j" }}</span><span>{{ chart.13.date|date:"M j" }}</span></div>
+  </section>
+  <section class="panel by-book-panel">
+    <div class="panel-heading"><div><span class="eyebrow">{{ month_label|upper }}</span><h2>Time by book</h2></div></div>
+    {% if by_book %}
+    <div class="book-time-list">
+      {% for item in by_book %}
+      <a href="{% url 'book-detail' item.book.pk %}" class="book-time-row">
+        {% if item.book.cover_url %}<img src="{{ item.book.cover_url }}" alt="" loading="lazy">{% else %}<span class="cover-fallback tiny-cover">{{ item.book.title|first|upper }}</span>{% endif %}
+        <span class="book-time-title"><strong>{{ item.book.title }}</strong><small>{{ item.book.author|default:"Author not listed" }}</small></span>
+        <strong>{{ item.seconds|duration }}</strong>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}<p class="muted-copy">Your reading time by book will appear here.</p>{% endif %}
+    <div class="stats-footnote"><span>{{ completed_count }}</span> completed session{{ completed_count|pluralize }} this month</div>
+  </section>
+</div>
+{% endblock %}

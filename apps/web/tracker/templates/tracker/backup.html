@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Backup and restore · Lire{% endblock %}
+{% block content %}
+<nav class="breadcrumbs"><a href="{% url 'profile' %}">Profile</a><span>/</span><span>Backup</span></nav>
+<section class="page-heading compact-heading"><div><span class="eyebrow">YOUR DATA, IN YOUR HANDS</span><h1>Backup &amp; restore<span class="accent-text">.</span></h1><p class="subheading">Keep your own copy of your library and reading history.</p></div><a class="button" href="{% url 'backup-export' %}">Download JSON <span aria-hidden="true">↓</span></a></section>
+<div class="backup-grid">
+  <section class="panel backup-info"><span class="eyebrow">EXPORT</span><h2>A portable copy</h2><p>Your JSON backup includes books, page progress, ratings, notes, and reading-session history. A running timer is saved as paused at the moment you export.</p><a class="quiet-link" href="{% url 'backup-export' %}">Download a backup <span aria-hidden="true">↗</span></a></section>
+  <section class="panel backup-restore"><span class="eyebrow">RESTORE</span><h2>Restore a Lire backup</h2><p>Restoring replaces the library and session history in this account. Download a backup first if you may want to keep the current data.</p>
+    <form method="post" action="{% url 'backup-restore' %}" enctype="multipart/form-data" class="form-stack" data-confirm="Restore this backup and replace the current library and reading history?">
+      {% csrf_token %}
+      <div class="form-field"><label for="{{ form.backup_file.id_for_label }}">{{ form.backup_file.label }}</label>{{ form.backup_file }}<small class="help-text">Lire JSON backup · up to 10 MB</small>{% if form.backup_file.errors %}<div class="field-error">{{ form.backup_file.errors }}</div>{% endif %}</div>
+      <button class="button button-danger" type="submit">Restore and replace data</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

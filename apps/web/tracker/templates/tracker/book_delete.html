@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Remove book · Lire{% endblock %}
+{% block content %}
+<nav class="breadcrumbs"><a href="{% url 'library' %}">Library</a><span>/</span><a href="{% url 'book-detail' book.pk %}">{{ book.title }}</a><span>/</span><span>Remove</span></nav>
+<section class="panel confirm-panel">
+  <span class="eyebrow">REMOVE FROM YOUR LIBRARY</span>
+  <h1>Remove “{{ book.title }}”?</h1>
+  <p>This also removes the reading sessions and notes saved for this book.</p>
+  <form method="post" class="button-row">{% csrf_token %}<a class="button button-secondary" href="{% url 'book-detail' book.pk %}">Keep book</a><button class="button button-danger" type="submit">Remove book</button></form>
+</section>
+{% endblock %}

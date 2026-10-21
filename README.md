@@ -1,62 +1,68 @@
 # Lire
 
-Lire is a free, open-source reading tracker for the web. It helps readers keep a personal library, record reading sessions, and understand how they spend time with books.
+Lire is a free, open-source reading tracker. Keep a personal library, record reading sessions, and see how you spend time with books.
 
-The current release is the browser experience. The library, timer, and stats work without an account. Optional cloud sync requires a configured Supabase project. Lire has no social feed, ads, or analytics.
+The current product is a Django web app. An account is required; books, notes, progress, and reading history are stored on the server and scoped to the signed-in reader. Lire has no social feed, ads, or analytics.
 
-## Current features
+## What is in the current build
 
-- Today screen with a live circular reading clock, active timer controls, and long-session correction.
-- Library search with list or tile view, Open Library covers and page counts, manual entry, ISBN, and four shelves.
-- Book progress, start and finish dates, reading time, private notes, ratings, and editable session history.
-- Daily, weekly, and monthly stats, including time by book, total sessions, and reading days.
-- Goodreads CSV preview with ISBN-first duplicate matching, optional separate-copy import, ratings, notes, dates, page counts, and shelves.
-- Local JSON backup and restore, plus local and account data deletion controls.
-- Optional Supabase email sign-in and sync for books and completed sessions. Running and paused sessions stay local.
+- A Today page with a live circular clock for today’s reading time, one active session, and visible start, pause, resume, and finish controls.
+- A private library with search, list or tile view, four shelves, Open Library lookup, cover art, and page totals.
+- Book details with editable page progress, dates, private notes, ratings, per-book reading time, and session history.
+- Daily, weekly, and monthly reading summaries, a 14-day chart, and time by book.
+- Goodreads CSV preview and import, with ISBN-first duplicate checks and an option to import another copy.
+- JSON backup and restore. Restore accepts Lire backup versions 1–3, including backups from the earlier browser build.
+- Account editing and deletion, plus ownership checks on reader data.
+- Dark gray and deep orange responsive styling.
 
-Reading reminders are not available in the current browser build. Catalog search sends the query to Open Library, directly when no backend is configured and through the included cached Edge Function when configured. Covers are loaded from Open Library.
+Open Library provides catalog metadata and cover images. Its page-count value is a catalog estimate; check it before saving. Lire does not invent reading-time sessions during Goodreads import.
 
 ## Run locally
 
-The browser client is in `apps/mobile`:
+Requires Python 3.13 or newer.
 
-```sh
-cd apps/mobile
-npm ci
-npm run web
-```
+~~~sh
+cd apps/web
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+~~~
 
-## Build for hosting
+Open <http://127.0.0.1:8000>. If your books are still in the earlier browser release, export its Lire JSON backup first and restore it here after creating an account. Local development uses SQLite. To create an admin user for the local Django admin, run python manage.py createsuperuser.
 
-```sh
-npm run build:web
-```
+Set DJANGO_DEBUG=true, DJANGO_SECRET_KEY, and DJANGO_ALLOWED_HOSTS in your shell if you want to override the local defaults. The example deployment values are in apps/web/.env.example; Django does not load that file automatically.
 
-This exports the site to `apps/mobile/dist`. For Netlify, use:
+## Deploy on Render
 
-- Base directory: `apps/mobile`
-- Build command: `npm run build:web`
-- Publish directory: `dist`
+The repository includes a Render Blueprint in render.yaml. It defines a Python web service and a persistent PostgreSQL database. The service uses:
 
-The project uses single-page routing. The `public/_redirects` file sends browser routes back to the app entry point so paths such as `/book/123` also work when opened directly or refreshed.
+- Root directory: apps/web
+- Build command: pip install -r requirements.txt && python manage.py collectstatic --no-input
+- Pre-deploy command: python manage.py migrate
+- Start command: python -m gunicorn lire_site.wsgi:application --bind 0.0.0.0:$PORT
 
-## Optional Supabase setup
+The Blueprint selects paid Render compute for both the web service and database. Review the plan and current pricing in Render before applying it; no Render resources have been created by this repository change. Render’s free PostgreSQL databases expire after 30 days and do not include managed backups, so they are unsuitable for storing readers’ long-term libraries. See [Render’s free service limits](https://render.com/docs/free) and [Postgres recovery and backups](https://render.com/docs/postgresql-backups).
 
-Without Supabase settings, Lire remains usable locally. To enable cloud accounts, sync, and the server-side catalog adapter:
+After deployment, add lirebooks.com and www.lirebooks.com as custom domains in Render and set the DNS records Render provides. The Blueprint already allows those host names. Confirm HTTPS, account creation, email/password sign-in, data isolation, imports, backups, and timer behavior before inviting readers.
 
-1. Create a Supabase project and copy `apps/mobile/.env.example` to `apps/mobile/.env`.
-2. Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` (the public publishable/anon key). Never place a service-role key in the client.
-3. Link the Supabase CLI project, apply `supabase/migrations/20261021000000_lire_cloud.sql`, then deploy `catalog-search` and `delete-account` from `supabase/functions/`.
-4. Configure Supabase email delivery and the hosted browser callback before enabling email sign-in on a deployed site. Callback configuration still needs production validation.
-5. Restart the development server after changing the environment file.
+## Data and privacy
 
-The SQL migration separates public catalog metadata from private `user_books`, `reading_sessions`, and `session_segments`, enables row-level security, and grants access only to the account owner. The delete-account Edge Function uses the server-side service role to delete the Auth user; keep that key in Supabase function secrets only. Sync merges rows by `updated_at` (last write wins). Account-scoped deletion markers keep removed books from returning after sync. Active timers are excluded.
+- Each book, session, segment, and import draft belongs to one Django account. App queries always scope private data to the signed-in owner.
+- Production requires DATABASE_URL and DJANGO_SECRET_KEY; the app refuses to start without them. Do not commit secrets.
+- Django’s CSRF protection, password hashing, HTTPS redirects, secure cookies, and static-file middleware are configured for deployment.
+- The browser’s IANA timezone is used to split reading time across local calendar days.
+- Catalog searches are sent from the Lire server to Open Library. Cover images load from Open Library with a same-origin referrer policy.
+- Account deletion cascades to that reader’s books and reading history. A JSON backup can be downloaded first.
+
+Account email verification, password recovery, and login-attempt throttling are not implemented yet. Add and validate those before treating the account system as a public production service.
 
 ## Project docs
 
-- [Product plan and implementation phases](docs/product-plan.md)
+- [Product plan and building phases](docs/product-plan.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See LICENSE.

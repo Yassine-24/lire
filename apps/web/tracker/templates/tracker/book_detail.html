@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}{{ book.title }} · Lire{% endblock %}
+{% block content %}
+<nav class="breadcrumbs"><a href="{% url 'library' %}">Library</a><span>/</span><span>{{ book.title }}</span></nav>
+<section class="panel book-detail-hero{% if book_just_added %} book-added{% endif %}">
+  {% if book.cover_url %}<img class="detail-cover" src="{{ book.cover_url }}" alt="Cover of {{ book.title }}">{% else %}<span class="cover-fallback detail-cover">{{ book.title|first|upper }}</span>{% endif %}
+  <div class="detail-main">
+    <span class="eyebrow">{{ book.get_status_display }}{% if book.published_year %} · {{ book.published_year }}{% endif %}</span>
+    <h1>{{ book.title }}<span class="accent-text">.</span></h1>
+    <p class="detail-author">{{ book.author|default:"Author not listed" }}</p>
+    <div class="detail-page-count">{% if book.page_count %}<strong>{{ book.current_page }}</strong><span>of {{ book.page_count }} pages</span>{% else %}<span>Total pages not set</span>{% endif %}</div>
+    <div class="progress-track detail-progress" aria-label="{{ book|progress }} percent complete"><span style="width:{{ book|progress }}%"></span></div>
+    {% if active_session %}<div class="session-elapsed detail-session-clock" data-session-clock data-seconds="{{ active_seconds }}" data-rendered-at="{{ rendered_at }}" data-running="{% if active_session.status == 'running' %}true{% else %}false{% endif %}"><span class="eyebrow">CURRENT SESSION</span><strong data-clock-value>{{ active_seconds|duration }}</strong></div>{% endif %}
+    <div class="detail-actions">
+      {% if active_session %}
+        {% if active_session.status == 'running' %}
+        <form method="post" action="{% url 'session-pause' active_session.pk %}">{% csrf_token %}<button class="button" type="submit">Pause timer</button></form>
+        {% else %}
+        <form method="post" action="{% url 'session-resume' active_session.pk %}">{% csrf_token %}<button class="button" type="submit">Resume timer</button></form>
+        {% endif %}
+        <form method="post" action="{% url 'session-finish' active_session.pk %}" data-confirm="Finish this reading session?">{% csrf_token %}<button class="button button-secondary" type="submit">Finish session</button></form>
+      {% elif global_active_session %}
+        <a class="button button-secondary" href="{% url 'today' %}">Timer active · {{ global_active_session.book.title }}</a>
+      {% else %}
+        <form method="post" action="{% url 'session-start' %}">{% csrf_token %}<input type="hidden" name="book_id" value="{{ book.pk }}"><button class="button" type="submit"><span aria-hidden="true">▶</span> Start reading</button></form>
+      {% endif %}
+      <a class="button button-secondary" href="{% url 'book-edit' book.pk %}">Edit details</a>
+    </div>
+  </div>
+  <form method="post" action="{% url 'book-status' book.pk %}" class="shelf-change">
+    {% csrf_token %}
+    <label class="sr-only" for="book-shelf">Move to shelf</label>
+    <select id="book-shelf" name="status" >
+      {% for value,label in status_choices %}<option value="{{ value }}" {% if book.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <noscript><button class="button button-small" type="submit">Move</button></noscript>
+  </form>
+</section>
+
+<div class="detail-columns">
+  <section class="panel progress-panel">
+    <div class="panel-heading"><div><span class="eyebrow">READING PROGRESS</span><h2>Where are you?</h2></div><span class="panel-glyph" aria-hidden="true">↗</span></div>
+    <form method="post" action="{% url 'book-progress' book.pk %}" class="progress-form">
+      {% csrf_token %}
+      <div class="form-field"><label for="{{ progress_form.current_page.id_for_label }}">Current page</label>{{ progress_form.current_page }}</div>
+      <div class="form-field"><label for="{{ progress_form.page_count.id_for_label }}">Total pages</label>{{ progress_form.page_count }}</div>
+      <button class="button button-wide" type="submit">Save progress</button>
+    </form>
+    {% if book.started_at or book.finished_at %}
+    <div class="date-pair">{% if book.started_at %}<span><small>Started</small>{{ book.started_at|date:"M j, Y" }}</span>{% endif %}{% if book.finished_at %}<span><small>Finished</small>{{ book.finished_at|date:"M j, Y" }}</span>{% endif %}</div>
+    {% endif %}
+  </section>
+  <section class="panel notes-panel">
+    <div class="panel-heading"><div><span class="eyebrow">YOUR NOTES</span><h2>Keep a thought</h2></div><span class="panel-glyph" aria-hidden="true">✎</span></div>
+    {% if book.rating %}<div class="rating-stars" aria-label="Rated {{ book.rating }} out of 5">{% for star in "12345" %}{% if forloop.counter <= book.rating %}★{% else %}<span>☆</span>{% endif %}{% endfor %}</div>{% endif %}
+    {% if book.notes %}<p class="book-notes">{{ book.notes|linebreaksbr }}</p>{% else %}<p class="muted-copy">Add a note or rating in the book details.</p>{% endif %}
+    <a class="quiet-link" href="{% url 'book-edit' book.pk %}">Edit notes and rating <span aria-hidden="true">↗</span></a>
+    <div class="detail-meta">
+      {% if book.isbn %}<span><small>ISBN</small>{{ book.isbn }}</span>{% endif %}
+      {% if book.published_year %}<span><small>Published</small>{{ book.published_year }}</span>{% endif %}
+    </div>
+  </section>
+</div>
+
+<section class="section-block history-section">
+  <div class="section-heading"><div><span class="eyebrow">TIME WITH THIS BOOK</span><h2>Session history</h2></div><span class="history-count">{{ sessions|length }} session{{ sessions|length|pluralize }}</span></div>
+  {% if sessions %}
+  <div class="session-history">
+    {% for session in sessions %}
+    <article class="history-row panel">
+      <span class="history-icon" aria-hidden="true">{% if session.status == 'completed' %}✓{% else %}◷{% endif %}</span>
+      <div class="history-main"><strong>{{ session.started_at|date:"D, M j · g:i A" }}</strong><small>{% if session.status == "completed" %}Finished {{ session.completed_at|date:"g:i A" }}{% else %}{{ session.get_status_display }}{% endif %}</small></div>
+      <strong class="history-duration">{{ session.seconds|duration }}</strong>
+      {% if session.status != "running" %}
+      <details class="correct-duration"><summary>Adjust</summary><form method="post" action="{% url 'session-correct' session.pk %}" class="inline-correction">{% csrf_token %}<label for="minutes-{{ session.pk }}">Total minutes</label><input id="minutes-{{ session.pk }}" name="total_minutes" type="number" min="0" value="{{ session.correction_form.initial.total_minutes }}" required><button class="button button-small" type="submit">Save</button></form></details>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}<div class="panel empty-panel"><p>Your reading sessions for this book will show up here.</p></div>{% endif %}
+</section>
+<div class="danger-zone"><p>Finished with this book?</p><a class="quiet-link danger-link" href="{% url 'book-delete' book.pk %}">Remove it from your library</a></div>
+{% endblock %}

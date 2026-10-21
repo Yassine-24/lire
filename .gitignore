@@ -3,3 +3,11 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Python / Django
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+db.sqlite3
+staticfiles/

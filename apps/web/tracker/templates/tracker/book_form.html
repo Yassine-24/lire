@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} · Lire{% endblock %}
+{% block content %}
+<nav class="breadcrumbs"><a href="{% url 'library' %}">Library</a><span>/</span><span>{{ page_title }}</span></nav>
+<section class="page-heading compact-heading"><div><span class="eyebrow">{% if is_edit %}YOUR LIBRARY{% else %}BOOK DETAILS{% endif %}</span><h1>{{ page_title }}<span class="accent-text">.</span></h1><p class="subheading">{% if is_edit %}Keep the details and progress up to date.{% else %}Search first, then fill in anything that’s missing.{% endif %}</p></div></section>
+
+<section class="panel catalog-panel" data-catalog-search data-endpoint="{% url 'catalog-search' %}">
+  <div class="catalog-heading"><div><span class="eyebrow">OPEN LIBRARY</span><h2>Find your book</h2></div><span class="catalog-spark" aria-hidden="true">⌕</span></div>
+  <label class="sr-only" for="catalog-query">Search Open Library by title or author</label>
+  <div class="catalog-input-row"><input id="catalog-query" type="search" autocomplete="off" placeholder="Search title or author"><span class="search-hint">Press enter to search</span></div>
+  <div class="catalog-results" data-catalog-results aria-live="polite"></div>
+</section>
+
+<form class="panel book-form-panel" method="post">
+  {% csrf_token %}
+  <div class="form-panel-heading"><div><span class="eyebrow">BOOK INFORMATION</span><h2>Details</h2></div><span class="required-note">Fields marked * are required</span></div>
+  {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="form-grid">
+  {% for field in form %}
+    {% if field.name == "catalog_id" %}
+      {{ field }}
+    {% else %}
+    <div class="form-field {% if field.name == 'notes' %}field-full{% endif %}">
+      <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="required-star"> *</span>{% endif %}</label>
+      {{ field }}
+      {% if field.help_text %}<small class="help-text">{{ field.help_text }}</small>{% endif %}
+      {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+    </div>
+    {% endif %}
+  {% endfor %}
+  </div>
+  <div class="form-actions"><a class="button button-secondary" href="{% if book %}{% url 'book-detail' book.pk %}{% else %}{% url 'library' %}{% endif %}">Cancel</a><button class="button" type="submit">{% if is_edit %}Save changes{% else %}Add to library{% endif %} <span aria-hidden="true">↗</span></button></div>
+</form>
+{% endblock %}

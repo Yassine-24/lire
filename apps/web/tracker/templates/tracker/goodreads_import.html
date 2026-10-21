@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Import Goodreads · Lire{% endblock %}
+{% block content %}
+<nav class="breadcrumbs"><a href="{% url 'profile' %}">Profile</a><span>/</span><span>Goodreads import</span></nav>
+<section class="page-heading compact-heading"><div><span class="eyebrow">BRING YOUR READING HISTORY</span><h1>Import from Goodreads<span class="accent-text">.</span></h1><p class="subheading">Upload the CSV export from your Goodreads library.</p></div></section>
+<div class="import-grid">
+  <section class="panel import-instructions">
+    <span class="import-step">01</span><h2>Export your library</h2>
+    <p>On Goodreads, open <strong>My Books</strong>, choose <strong>Import and export</strong>, then download your library as a CSV file.</p>
+    <span class="import-step">02</span><h2>Review before adding</h2>
+    <p>Lire checks ISBN first, then title and author. You can skip matches or import another copy.</p>
+    <span class="import-step">03</span><h2>Pick up in Lire</h2>
+    <p>Shelves, ratings, notes, dates, page totals, and finished status are carried over. Reading time is never guessed.</p>
+  </section>
+  <section class="panel upload-panel">
+    <span class="eyebrow">CSV FILE</span><h2>Choose your export</h2>
+    <form method="post" enctype="multipart/form-data" class="form-stack">
+      {% csrf_token %}
+      <div class="form-field"><label for="{{ form.csv_file.id_for_label }}">{{ form.csv_file.label }}</label>{{ form.csv_file }}<small class="help-text">CSV only · up to 5 MB · max 5,000 books</small>{% if form.csv_file.errors %}<div class="field-error">{{ form.csv_file.errors }}</div>{% endif %}</div>
+      <button class="button button-wide" type="submit">Preview import <span aria-hidden="true">↗</span></button>
+    </form>
+  </section>
+</div>
+{% endblock %}

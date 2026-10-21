@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Review import · Lire{% endblock %}
+{% block content %}
+<nav class="breadcrumbs"><a href="{% url 'profile' %}">Profile</a><span>/</span><a href="{% url 'goodreads-import' %}">Goodreads import</a><span>/</span><span>Review</span></nav>
+<section class="page-heading compact-heading"><div><span class="eyebrow">CHECK YOUR BOOKS</span><h1>Import preview<span class="accent-text">.</span></h1><p class="subheading">{{ total_count }} book{{ total_count|pluralize }} found{% if draft.skipped_count %} · {{ draft.skipped_count }} empty row{{ draft.skipped_count|pluralize }} skipped{% endif %}</p></div></section>
+<div class="import-summary panel">
+  <span class="summary-check" aria-hidden="true">✓</span><span><strong>{{ duplicate_count }} possible duplicate{{ duplicate_count|pluralize }}</strong><small>Matching checks ISBN first, then title and author.</small></span>
+</div>
+<div class="preview-table panel">
+  <div class="preview-table-head"><span>Book</span><span>Shelf</span><span>Pages</span><span>Match</span></div>
+  {% for book in books %}
+  <div class="preview-row"><span><strong>{{ book.title }}</strong><small>{{ book.author|default:"Author not listed" }}</small></span><span>{{ book.status|cut:"_"|title }}</span><span>{{ book.page_count|default:"—" }}</span><span>{% if book.duplicate_match %}<em class="duplicate-badge">{% if book.duplicate_match == "same-file" %}Same file{% else %}{{ book.duplicate_match|cut:"-"|title }}{% endif %}</em>{% else %}<em class="new-badge">New</em>{% endif %}</span></div>
+  {% endfor %}
+  {% if total_count > 100 %}<p class="preview-limit">Showing the first 100 of {{ total_count }} books.</p>{% endif %}
+</div>
+<form method="post" class="panel import-decision-form">
+  {% csrf_token %}
+  <label class="checkbox-field"><input type="checkbox" name="include_duplicates" value="yes"><span><strong>Import possible duplicates as separate copies</strong><small>Leave this unchecked to skip matching books.</small></span></label>
+  <div class="form-actions"><a class="button button-secondary" href="{% url 'goodreads-import' %}">Choose another file</a><button class="button" type="submit">Import books <span aria-hidden="true">↗</span></button></div>
+</form>
+{% endblock %}

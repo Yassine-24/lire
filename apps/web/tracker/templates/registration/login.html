@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Sign in · Lire{% endblock %}
+{% block content %}
+<section class="auth-layout">
+  <div class="auth-copy">
+    <span class="eyebrow">A quieter way to keep reading</span>
+    <h1>Your reading life,<br><span class="accent-text">in focus.</span></h1>
+    <p>Track time, keep your library close, and pick up where you left off.</p>
+  </div>
+  <div class="panel auth-panel">
+    <span class="eyebrow">Welcome back</span>
+    <h2>Sign in to Lire</h2>
+    <form method="post" class="form-stack">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+      <div class="form-field">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <button class="button button-wide" type="submit">Sign in <span aria-hidden="true">↗</span></button>
+    </form>
+    <p class="auth-switch">New to Lire? <a href="{% url 'register' %}">Create an account</a></p>
+  </div>
+</section>
+{% endblock %}

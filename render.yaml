@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: lire
+    runtime: python
+    plan: starter
+    rootDir: apps/web
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --no-input
+    preDeployCommand: python manage.py migrate
+    startCommand: python -m gunicorn lire_site.wsgi:application --bind 0.0.0.0:$PORT
+    healthCheckPath: /health/
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com,lirebooks.com,www.lirebooks.com"
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com,https://lirebooks.com,https://www.lirebooks.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lire-db
+          property: connectionString
+
+databases:
+  - name: lire-db
+    plan: basic-256mb
+    databaseName: lire
+    user: lire

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Profile · Lire{% endblock %}
+{% block content %}
+<section class="page-heading"><div><span class="eyebrow">YOUR ACCOUNT</span><h1>Profile<span class="accent-text">.</span></h1><p class="subheading">Account, privacy, and the data you keep in Lire.</p></div></section>
+<div class="profile-layout">
+  <section class="panel profile-card">
+    <div class="profile-avatar" aria-hidden="true">{{ user.username|first|upper }}</div>
+    <div><span class="eyebrow">SIGNED IN AS</span><h2>{{ user.username }}</h2><p>{{ user.email|default:"No email address added" }}</p></div>
+    <a class="button button-secondary" href="{% url 'profile-edit' %}">Edit account</a>
+  </section>
+  <section class="panel profile-actions">
+    <span class="eyebrow">YOUR READING DATA</span><h2>Take it with you</h2>
+    <a class="profile-action-row" href="{% url 'goodreads-import' %}"><span class="action-icon">↥</span><span><strong>Import Goodreads CSV</strong><small>Add your shelves, page counts, ratings, notes, and dates.</small></span><span class="arrow-mark">↗</span></a>
+    <a class="profile-action-row" href="{% url 'backup' %}"><span class="action-icon">◇</span><span><strong>Backup or restore</strong><small>Download a copy of your library or restore a Lire JSON file.</small></span><span class="arrow-mark">↗</span></a>
+    <a class="profile-action-row" href="{% url 'backup-export' %}"><span class="action-icon">↓</span><span><strong>Download backup</strong><small>Export books, notes, progress, and reading sessions.</small></span><span class="arrow-mark">↗</span></a>
+  </section>
+  <section class="panel privacy-card">
+    <span class="eyebrow">PRIVATE BY DEFAULT</span><h2>Your library belongs to you.</h2>
+    <p>Books, notes, and reading history are linked to your account and are only shown when you’re signed in. Lire has no social feed, ads, or public reader profile.</p>
+    <a class="quiet-link" href="https://github.com/Yassine-24/lire" target="_blank" rel="noopener noreferrer">View the open-source project <span aria-hidden="true">↗</span></a>
+  </section>
+  <section class="panel danger-zone-card">
+    <span class="eyebrow">ACCOUNT DATA</span><h2>Delete your Lire account</h2><p>This permanently deletes your account, library, notes, and session history.</p>
+    <form method="post" action="{% url 'account-delete' %}" class="delete-account-form" data-confirm="Permanently delete your account and all Lire data?">
+      {% csrf_token %}
+      <label for="account-password">Confirm with your password</label><input type="password" id="account-password" name="password" autocomplete="current-password" required>
+      <button class="button button-danger" type="submit">Delete account and data</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

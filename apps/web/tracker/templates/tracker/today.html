@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Today · Lire{% endblock %}
+{% block content %}
+<section class="page-heading today-heading">
+  <div>
+    <span class="eyebrow">{{ today_date|date:"l · F j" }}</span>
+    <h1>Today<span class="accent-text">.</span></h1>
+    <p class="subheading">A little time with a book adds up.</p>
+  </div>
+  <a class="button button-small" href="{% url 'book-add' %}"><span aria-hidden="true">＋</span> Add a book</a>
+</section>
+
+<div class="today-grid">
+  <section class="panel today-clock-card" data-today-clock data-seconds="{{ today_seconds }}" data-rendered-at="{{ rendered_at }}" data-running="{% if active_session and active_session.status == 'running' %}true{% else %}false{% endif %}">
+    <div class="clock-orbit" aria-hidden="true"><span class="clock-core"></span></div>
+    <div class="clock-readout">
+      <span class="eyebrow">READING TIME TODAY</span>
+      <strong data-clock-value>{{ today_seconds|duration }}</strong>
+      <span class="muted-copy">Every page counts.</span>
+    </div>
+    <div class="clock-card-footer">
+      <span class="status-dot {% if active_session and active_session.status == 'running' %}is-live{% endif %}"></span>
+      {% if active_session and active_session.status == 'running' %}Timer is running{% elif active_session %}Timer is paused{% else %}Ready when you are{% endif %}
+    </div>
+  </section>
+
+  <section class="panel session-panel">
+    <div class="panel-heading">
+      <div>
+        <span class="eyebrow">YOUR READING SESSION</span>
+        <h2>{% if active_session %}Keep your place{% else %}Start reading{% endif %}</h2>
+      </div>
+      <span class="panel-glyph" aria-hidden="true">◷</span>
+    </div>
+    {% if active_session %}
+      <a class="session-book" href="{% url 'book-detail' active_session.book_id %}">
+        {% if active_session.book.cover_url %}<img class="session-cover" src="{{ active_session.book.cover_url }}" alt="" loading="lazy">{% else %}<span class="cover-fallback small-cover">{{ active_session.book.title|first|upper }}</span>{% endif %}
+        <span><strong>{{ active_session.book.title }}</strong><small>{{ active_session.book.author|default:"Author not listed" }}</small></span>
+      </a>
+      <div class="session-elapsed" data-session-clock data-seconds="{{ active_seconds }}" data-rendered-at="{{ rendered_at }}" data-running="{% if active_session.status == 'running' %}true{% else %}false{% endif %}">
+        <span class="eyebrow">CURRENT SESSION</span>
+        <strong data-clock-value>{{ active_seconds|duration }}</strong>
+      </div>
+      <div class="button-row">
+        {% if active_session.status == 'running' %}
+        <form method="post" action="{% url 'session-pause' active_session.pk %}">{% csrf_token %}<button class="button button-secondary" type="submit">Pause</button></form>
+        {% else %}
+        <form method="post" action="{% url 'session-resume' active_session.pk %}">{% csrf_token %}<button class="button" type="submit">Resume</button></form>
+        {% endif %}
+        <form method="post" action="{% url 'session-finish' active_session.pk %}" data-confirm="Finish this reading session?">{% csrf_token %}<button class="button button-outline" type="submit">Finish session</button></form>
+      </div>
+      <a class="quiet-link" href="{% url 'book-detail' active_session.book_id %}">Open book details <span aria-hidden="true">↗</span></a>
+    {% elif start_choices %}
+      <p class="muted-copy session-prompt">Choose a book and Lire will keep time for this session.</p>
+      <form class="start-form" method="post" action="{% url 'session-start' %}">
+        {% csrf_token %}
+        <label class="sr-only" for="start-book">Choose a book to read</label>
+        <select id="start-book" name="book_id" required>
+          {% for book in start_choices %}<option value="{{ book.pk }}">{{ book.title }}{% if book.author %} · {{ book.author }}{% endif %}</option>{% endfor %}
+        </select>
+        <button class="button button-wide" type="submit"><span aria-hidden="true">▶</span> Start reading</button>
+      </form>
+      <span class="quiet-note">You can also start from any book page.</span>
+    {% else %}
+      <div class="empty-session">
+        <span class="empty-icon" aria-hidden="true">✳</span>
+        <p>Add your first book to start a session.</p>
+        <a class="button" href="{% url 'book-add' %}">Add a book</a>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<section class="section-block">
+  <div class="section-heading">
+    <div><span class="eyebrow">PICK UP WHERE YOU LEFT OFF</span><h2>Your library</h2></div>
+    <a class="quiet-link" href="{% url 'library' %}">View all {{ library_count }} <span aria-hidden="true">↗</span></a>
+  </div>
+  {% if recent_books %}
+  <div class="recent-book-grid">
+    {% for book in recent_books %}
+    <a class="recent-book panel" href="{% url 'book-detail' book.pk %}">
+      {% if book.cover_url %}<img class="recent-cover" src="{{ book.cover_url }}" alt="Cover of {{ book.title }}" loading="lazy">{% else %}<span class="cover-fallback recent-cover">{{ book.title|first|upper }}</span>{% endif %}
+      <span class="recent-book-info"><strong>{{ book.title }}</strong><small>{{ book.author|default:"Author not listed" }}</small><span class="mini-progress"><span style="width:{{ book|progress }}%"></span></span></span>
+      <span class="arrow-mark" aria-hidden="true">↗</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="panel empty-panel"><p>Your library is waiting for its first story.</p><a class="quiet-link" href="{% url 'book-add' %}">Add your first book <span aria-hidden="true">↗</span></a></div>
+  {% endif %}
+</section>
+{% endblock %}

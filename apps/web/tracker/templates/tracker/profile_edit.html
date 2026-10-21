@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Edit account · Lire{% endblock %}
+{% block content %}
+<nav class="breadcrumbs"><a href="{% url 'profile' %}">Profile</a><span>/</span><span>Edit account</span></nav>
+<section class="page-heading compact-heading"><div><span class="eyebrow">ACCOUNT DETAILS</span><h1>Edit profile<span class="accent-text">.</span></h1></div></section>
+<form method="post" class="panel book-form-panel narrow-panel">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+  {% for field in form %}<div class="form-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}</div>{% endfor %}
+  <div class="form-actions"><a class="button button-secondary" href="{% url 'profile' %}">Cancel</a><button class="button" type="submit">Save account</button></div>
+</form>
+{% endblock %}

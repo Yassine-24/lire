@@ -1,0 +1,55 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17191b">
+  <meta name="description" content="Lire is a private reading tracker for your books, sessions, and progress.">
+  <title>{% block title %}Lire{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'tracker/app.css' %}">
+  <script src="{% static 'tracker/app.js' %}" defer></script>
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="{% if user.is_authenticated %}{% url 'today' %}{% else %}{% url 'login' %}{% endif %}" aria-label="Lire home">
+        <span class="brand-mark" aria-hidden="true">l</span>
+        <span class="brand-name">lire<span class="brand-period">.</span></span>
+      </a>
+      {% if user.is_authenticated %}
+      <nav class="main-nav" aria-label="Main navigation">
+        <a class="{% if request.resolver_match.url_name == 'today' %}active{% endif %}" href="{% url 'today' %}">Today</a>
+        <a class="{% if request.resolver_match.url_name == 'library' or request.resolver_match.url_name == 'book-detail' or request.resolver_match.url_name == 'book-add' or request.resolver_match.url_name == 'book-edit' %}active{% endif %}" href="{% url 'library' %}">Library</a>
+        <a class="{% if request.resolver_match.url_name == 'stats' %}active{% endif %}" href="{% url 'stats' %}">Stats</a>
+        <a class="{% if request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'backup' %}active{% endif %}" href="{% url 'profile' %}">Profile</a>
+      </nav>
+      <form class="logout-form" method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button class="text-button" type="submit">Log out</button>
+      </form>
+      {% else %}
+      <div class="auth-links">
+        <a class="text-button" href="{% url 'login' %}">Sign in</a>
+        <a class="button button-small" href="{% url 'register' %}">Create account</a>
+      </div>
+      {% endif %}
+    </header>
+    <main class="main-content">
+      {% if messages %}
+      <div class="messages" aria-live="polite">
+        {% for message in messages %}
+        <div class="message message-{{ message.tags|default:'info' }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="site-footer">
+      <span>Private by default. Built for the pages you read.</span>
+      <a href="https://openlibrary.org/" target="_blank" rel="noopener noreferrer">Book metadata by Open Library</a>
+    </footer>
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

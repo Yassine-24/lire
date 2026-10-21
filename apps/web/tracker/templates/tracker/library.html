@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load tracker_tags %}
+{% block title %}Library · Lire{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div><span class="eyebrow">YOUR PERSONAL COLLECTION · {{ total_books }} BOOK{{ total_books|pluralize|upper }}</span><h1>Library<span class="accent-text">.</span></h1><p class="subheading">A home for what you’re reading and what’s next.</p></div>
+  <a class="button" href="{% url 'book-add' %}"><span aria-hidden="true">＋</span> Add a book</a>
+</section>
+
+<div class="library-toolbar panel">
+  <form class="library-search" method="get" action="{% url 'library' %}">
+    <label class="sr-only" for="library-query">Search your library</label>
+    <span aria-hidden="true" class="search-glyph">⌕</span>
+    <input id="library-query" type="search" name="q" value="{{ query }}" placeholder="Search titles, authors, ISBN">
+    {% if selected_shelf %}<input type="hidden" name="shelf" value="{{ selected_shelf }}">{% endif %}
+    {% if layout == "tiles" %}<input type="hidden" name="layout" value="tiles">{% endif %}
+    <button class="text-button" type="submit">Search</button>
+  </form>
+  <div class="view-toggle" aria-label="Library layout">
+    <a class="{% if layout == 'list' %}selected{% endif %}" href="?{% if query %}q={{ query|urlencode }}&amp;{% endif %}{% if selected_shelf %}shelf={{ selected_shelf }}&amp;{% endif %}layout=list" aria-label="List view">☰</a>
+    <a class="{% if layout == 'tiles' %}selected{% endif %}" href="?{% if query %}q={{ query|urlencode }}&amp;{% endif %}{% if selected_shelf %}shelf={{ selected_shelf }}&amp;{% endif %}layout=tiles" aria-label="Tile view">▦</a>
+  </div>
+</div>
+
+<nav class="shelf-tabs" aria-label="Filter by shelf">
+  <a class="{% if not selected_shelf %}selected{% endif %}" href="?{% if query %}q={{ query|urlencode }}&amp;{% endif %}layout={{ layout }}">All <span>{{ total_books }}</span></a>
+  <a class="{% if selected_shelf == 'reading' %}selected{% endif %}" href="?{% if query %}q={{ query|urlencode }}&amp;{% endif %}shelf=reading&amp;layout={{ layout }}">Reading <span>{{ counts.reading }}</span></a>
+  <a class="{% if selected_shelf == 'want_to_read' %}selected{% endif %}" href="?{% if query %}q={{ query|urlencode }}&amp;{% endif %}shelf=want_to_read&amp;layout={{ layout }}">Want to read <span>{{ counts.want_to_read }}</span></a>
+  <a class="{% if selected_shelf == 'finished' %}selected{% endif %}" href="?{% if query %}q={{ query|urlencode }}&amp;{% endif %}shelf=finished&amp;layout={{ layout }}">Finished <span>{{ counts.finished }}</span></a>
+  <a class="{% if selected_shelf == 'paused' %}selected{% endif %}" href="?{% if query %}q={{ query|urlencode }}&amp;{% endif %}shelf=paused&amp;layout={{ layout }}">Paused <span>{{ counts.paused }}</span></a>
+</nav>
+
+{% if books %}
+  {% if layout == "tiles" %}
+  <div class="book-tile-grid">
+    {% for book in books %}
+    <a class="book-tile panel" href="{% url 'book-detail' book.pk %}">
+      <span class="tile-cover-wrap">
+        {% if book.cover_url %}<img class="tile-cover" src="{{ book.cover_url }}" alt="Cover of {{ book.title }}" loading="lazy">{% else %}<span class="cover-fallback tile-cover">{{ book.title|first|upper }}</span>{% endif %}
+      </span>
+      <span class="tile-info"><strong>{{ book.title }}</strong><small>{{ book.author|default:"Author not listed" }}</small><span class="tile-meta">{{ book.get_status_display }}{% if book.page_count %} · {{ book.current_page }}/{{ book.page_count }} pages{% endif %}</span><span class="mini-progress"><span style="width:{{ book|progress }}%"></span></span></span>
+      <span class="tile-arrow" aria-hidden="true">↗</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="book-list">
+    {% for book in books %}
+    <a class="book-row panel" href="{% url 'book-detail' book.pk %}">
+      {% if book.cover_url %}<img class="row-cover" src="{{ book.cover_url }}" alt="" loading="lazy">{% else %}<span class="cover-fallback row-cover">{{ book.title|first|upper }}</span>{% endif %}
+      <span class="row-title"><strong>{{ book.title }}</strong><small>{{ book.author|default:"Author not listed" }}</small></span>
+      <span class="row-shelf">{{ book.get_status_display }}</span>
+      <span class="row-progress">{% if book.page_count %}{{ book.current_page }} / {{ book.page_count }} pages{% else %}Progress not set{% endif %}<span class="mini-progress"><span style="width:{{ book|progress }}%"></span></span></span>
+      <span class="arrow-mark" aria-hidden="true">↗</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% else %}
+<div class="panel empty-panel">
+  <span class="empty-icon" aria-hidden="true">⌕</span>
+  {% if query %}<h2>No books match that search.</h2><p>Try a different title, author, or ISBN.</p>{% elif selected_shelf %}<h2>This shelf is empty.</h2><p>Move a book here or add something new.</p><a class="button" href="{% url 'book-add' %}">Add a book</a>{% else %}<h2>Your library is a blank page.</h2><p>Search Open Library or add a book by hand.</p><a class="button" href="{% url 'book-add' %}">Add your first book</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

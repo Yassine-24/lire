@@ -144,8 +144,8 @@ export function Field({
     <View style={style}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
-        placeholderTextColor={colors.muted}
-        selectionColor={colors.forest}
+        placeholderTextColor={colors.textMuted}
+        selectionColor={colors.accent}
         style={styles.input}
         {...inputProps}
       />
@@ -185,7 +185,7 @@ export function EmptyState({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.background,
   },
   pageContent: {
     paddingHorizontal: spacing.page,
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     gap: 22,
   },
   eyebrow: {
-    color: colors.forest,
+    color: colors.accent,
     fontFamily: fonts.body,
     fontSize: 11,
     fontWeight: '700',
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   pageTitle: {
-    color: colors.ink,
+    color: colors.text,
     fontFamily: fonts.display,
     fontSize: 34,
     lineHeight: 40,
@@ -215,26 +215,26 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   sectionTitle: {
-    color: colors.ink,
+    color: colors.text,
     fontFamily: fonts.display,
     fontSize: 22,
   },
   sectionDetail: {
-    color: colors.muted,
+    color: colors.textMuted,
     fontFamily: fonts.body,
     fontSize: 12,
   },
   card: {
-    backgroundColor: colors.paperBright,
-    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderWidth: 1,
     borderRadius: 22,
     padding: spacing.card,
     gap: 12,
   },
   cardDark: {
-    backgroundColor: colors.forestDeep,
-    borderColor: colors.forestDeep,
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
   },
   button: {
     minHeight: 48,
@@ -244,18 +244,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonPrimary: {
-    backgroundColor: colors.forest,
+    backgroundColor: colors.accentStrong,
   },
   buttonOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.border,
   },
   buttonSoft: {
-    backgroundColor: colors.sage,
+    backgroundColor: colors.accentSoft,
   },
   buttonDanger: {
-    backgroundColor: colors.clayPale,
+    backgroundColor: colors.accentSoft,
   },
   buttonText: {
     fontFamily: fonts.body,
@@ -266,13 +266,13 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   buttonTextOutline: {
-    color: colors.ink,
+    color: colors.text,
   },
   buttonTextSoft: {
-    color: colors.forestDeep,
+    color: colors.accent,
   },
   buttonTextDanger: {
-    color: colors.clay,
+    color: colors.accentLight,
   },
   pressed: {
     opacity: 0.82,
@@ -286,16 +286,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     justifyContent: 'center',
     borderRadius: 20,
-    backgroundColor: colors.paperBright,
-    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderWidth: 1,
   },
   chipActive: {
-    backgroundColor: colors.forest,
-    borderColor: colors.forest,
+    backgroundColor: colors.accentStrong,
+    borderColor: colors.accentStrong,
   },
   chipText: {
-    color: colors.muted,
+    color: colors.textMuted,
     fontFamily: fonts.body,
     fontSize: 13,
     fontWeight: '600',
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   fieldLabel: {
-    color: colors.ink,
+    color: colors.text,
     fontFamily: fonts.body,
     fontWeight: '700',
     fontSize: 13,
@@ -312,26 +312,26 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 52,
-    borderColor: colors.line,
+    borderColor: colors.border,
     borderWidth: 1,
     borderRadius: 14,
-    backgroundColor: colors.paperBright,
+    backgroundColor: colors.surface,
     paddingHorizontal: 14,
-    color: colors.ink,
+    color: colors.text,
     fontFamily: fonts.body,
     fontSize: 15,
   },
   message: {
-    backgroundColor: colors.sage,
+    backgroundColor: colors.accentSoft,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 14,
   },
   messageWarning: {
-    backgroundColor: colors.warningPale,
+    backgroundColor: colors.warningSurface,
   },
   messageText: {
-    color: colors.forestDeep,
+    color: colors.text,
     fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 19,
@@ -349,24 +349,24 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 16,
-    backgroundColor: colors.sage,
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyMarkText: {
-    color: colors.forest,
+    color: colors.accent,
     fontFamily: fonts.display,
     fontSize: 25,
   },
   emptyTitle: {
-    color: colors.ink,
+    color: colors.text,
     fontFamily: fonts.display,
     fontSize: 20,
     textAlign: 'center',
   },
   emptyDetail: {
     maxWidth: 280,
-    color: colors.muted,
+    color: colors.textMuted,
     fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 21,

@@ -34,13 +34,13 @@ export default function NewBookScreen() {
     <Page>
       <View style={{ gap: 9 }}>
         <Pressable accessibilityRole="link" onPress={() => router.back()} style={{ paddingVertical: 4 }}>
-          <Text style={{ color: colors.forest, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
+          <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
             ‹ Back
           </Text>
         </Pressable>
         <Eyebrow>Make a place on your shelf</Eyebrow>
         <PageTitle>Add a book</PageTitle>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
           A title is enough to begin. You can add details later.
         </Text>
       </View>
@@ -68,7 +68,7 @@ export default function NewBookScreen() {
       </View>
 
       <View style={{ gap: 12 }}>
-        <Text style={{ color: colors.ink, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
+        <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
           Shelf
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

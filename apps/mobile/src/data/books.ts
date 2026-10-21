@@ -1,5 +1,6 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { withAppTransaction } from '@/data/transactions';
 import { sumSegmentSeconds } from '@/domain/time';
 
 export type BookStatus = 'reading' | 'want_to_read' | 'finished';
@@ -60,15 +61,17 @@ export async function createBook(
 
   const id = Crypto.randomUUID();
   const now = new Date().toISOString();
-  await db.runAsync(
-    'INSERT INTO books (id, title, author, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-    id,
-    title,
-    author,
-    input.status,
-    now,
-    now,
-  );
+  await withAppTransaction(db, async (transaction) => {
+    await transaction.runAsync(
+      'INSERT INTO books (id, title, author, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      id,
+      title,
+      author,
+      input.status,
+      now,
+      now,
+    );
+  });
   return id;
 }
 
@@ -77,12 +80,14 @@ export async function updateBookStatus(
   id: string,
   status: BookStatus,
 ): Promise<void> {
-  await db.runAsync(
-    'UPDATE books SET status = ?, updated_at = ? WHERE id = ?',
-    status,
-    new Date().toISOString(),
-    id,
-  );
+  await withAppTransaction(db, async (transaction) => {
+    await transaction.runAsync(
+      'UPDATE books SET status = ?, updated_at = ? WHERE id = ?',
+      status,
+      new Date().toISOString(),
+      id,
+    );
+  });
 }
 
 export async function getReadingSegments(db: SQLiteDatabase): Promise<ReadingSegment[]> {

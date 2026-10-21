@@ -1,20 +1,20 @@
 import { Platform } from 'react-native';
 
 export const colors = {
-  paper: '#F5F1E8',
-  paperBright: '#FBF9F4',
-  ink: '#20312A',
-  forest: '#315B48',
-  forestDeep: '#254635',
-  sage: '#DDE7DA',
-  muted: '#747C72',
-  line: '#E5DED2',
+  background: '#17191C',
+  surface: '#222427',
+  surfaceRaised: '#2A2D31',
+  text: '#F4F1EE',
+  textMuted: '#AEA9A3',
+  accent: '#F47A32',
+  accentStrong: '#C0440B',
+  accentSoft: '#34251E',
+  accentLight: '#FFA06D',
+  border: '#383A3D',
   white: '#FFFFFF',
-  clay: '#B76549',
-  clayPale: '#F3E4DA',
-  warning: '#8B5C28',
-  warningPale: '#F5EBD8',
-  tab: '#FBF9F4',
+  warning: '#F4C16F',
+  warningSurface: '#3A3024',
+  tab: '#1D1F22',
 };
 
 export const fonts = {

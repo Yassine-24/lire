@@ -1,5 +1,6 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { withAppTransaction } from '@/data/transactions';
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -10,7 +11,7 @@ export async function startSession(db: SQLiteDatabase, bookId: string): Promise<
   const segmentId = Crypto.randomUUID();
   const now = nowIso();
 
-  await db.withExclusiveTransactionAsync(async (transaction) => {
+  await withAppTransaction(db, async (transaction) => {
     const existing = await transaction.getFirstAsync<{ id: string; status: string }>(
       "SELECT id, status FROM reading_sessions WHERE status IN ('running', 'paused') LIMIT 1",
     );
@@ -47,7 +48,7 @@ export async function startSession(db: SQLiteDatabase, bookId: string): Promise<
 
 export async function pauseSession(db: SQLiteDatabase, id: string): Promise<void> {
   const now = nowIso();
-  await db.withExclusiveTransactionAsync(async (transaction) => {
+  await withAppTransaction(db, async (transaction) => {
     const session = await transaction.getFirstAsync<{ id: string; status: string }>(
       "SELECT id, status FROM reading_sessions WHERE id = ? AND status IN ('running', 'paused')",
       id,
@@ -66,7 +67,7 @@ export async function pauseSession(db: SQLiteDatabase, id: string): Promise<void
 export async function resumeSession(db: SQLiteDatabase, id: string): Promise<void> {
   const now = nowIso();
   const segmentId = Crypto.randomUUID();
-  await db.withExclusiveTransactionAsync(async (transaction) => {
+  await withAppTransaction(db, async (transaction) => {
     const session = await transaction.getFirstAsync<{ id: string; status: string }>(
       "SELECT id, status FROM reading_sessions WHERE id = ? AND status IN ('running', 'paused')",
       id,
@@ -91,7 +92,7 @@ export async function resumeSession(db: SQLiteDatabase, id: string): Promise<voi
 
 export async function finishSession(db: SQLiteDatabase, id: string): Promise<void> {
   const now = nowIso();
-  await db.withExclusiveTransactionAsync(async (transaction) => {
+  await withAppTransaction(db, async (transaction) => {
     const session = await transaction.getFirstAsync<{ id: string; status: string }>(
       "SELECT id, status FROM reading_sessions WHERE id = ? AND status IN ('running', 'paused')",
       id,

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { getReadingSegments, type ReadingSegment } from '@/data/books';
-import { Card, Chip, Eyebrow, Page, PageTitle, StatusMessage } from '@/components/ui';
+import { Button, Card, Chip, Eyebrow, Page, PageTitle, StatusMessage } from '@/components/ui';
 import { colors, fonts } from '@/design/tokens';
 import { formatDuration, localDayKey, secondsByLocalDay, shiftLocalDay, weekStart } from '@/domain/time';
 
@@ -89,7 +89,7 @@ export default function StatsScreen() {
       <View style={{ gap: 9 }}>
         <Eyebrow>A record of your reading</Eyebrow>
         <PageTitle>Time well spent.</PageTitle>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
           Your time, gathered from each reading session.
         </Text>
       </View>
@@ -101,7 +101,7 @@ export default function StatsScreen() {
         <Text style={{ color: colors.white, fontFamily: fonts.display, fontSize: 42, lineHeight: 50 }}>
           {formatDuration(selectedTotal)}
         </Text>
-        <Text style={{ color: '#D7E3D7', fontFamily: fonts.body, fontSize: 13 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
           {activeDays} {activeDays === 1 ? 'day with reading' : 'days with reading'}
         </Text>
       </Card>
@@ -114,10 +114,10 @@ export default function StatsScreen() {
 
       <Card style={{ padding: 20, gap: 17 }}>
         <View style={{ gap: 5 }}>
-          <Text style={{ color: colors.ink, fontFamily: fonts.display, fontSize: 22 }}>
+          <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 22 }}>
             {period === 'day' ? 'Today so far' : period === 'week' ? 'This week, day by day' : 'This month, week by week'}
           </Text>
-          <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 12 }}>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>
             {bestDay > 0 ? 'Your strongest day: ' + formatDuration(bestDay) : 'The next page is yours.'}
           </Text>
         </View>
@@ -127,15 +127,15 @@ export default function StatsScreen() {
           return (
             <View key={point.label} style={{ gap: 7 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 12 }}>
+                <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>
                   {point.label}
                 </Text>
-                <Text style={{ color: colors.ink, fontFamily: fonts.body, fontSize: 12, fontWeight: '600' }}>
+                <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 12, fontWeight: '600' }}>
                   {formatDuration(point.seconds)}
                 </Text>
               </View>
-              <View style={{ height: 7, borderRadius: 8, backgroundColor: colors.line, overflow: 'hidden' }}>
-                <View style={{ height: 7, width: width + '%', borderRadius: 8, backgroundColor: colors.forest }} />
+              <View style={{ height: 7, borderRadius: 8, backgroundColor: colors.border, overflow: 'hidden' }}>
+                <View style={{ height: 7, width: width + '%', borderRadius: 8, backgroundColor: colors.accent }} />
               </View>
             </View>
           );
@@ -143,12 +143,25 @@ export default function StatsScreen() {
       </Card>
 
       <Card style={{ gap: 8 }}>
-        <Text style={{ color: colors.ink, fontFamily: fonts.display, fontSize: 18 }}>
+        <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 18 }}>
           Measured in real time
         </Text>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 }}>
           Paused time is left out. Reading sessions that cross midnight are split between the days they touched.
         </Text>
+      </Card>
+
+      <Card style={{ gap: 10 }}>
+        <Eyebrow>Your data</Eyebrow>
+        <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 20 }}>
+          Keep a copy of your reading life.
+        </Text>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 }}>
+          Export a private backup or restore one you saved earlier.
+        </Text>
+        <Button variant="outline" onPress={() => router.push('/backup')}>
+          Back up or restore data
+        </Button>
       </Card>
     </Page>
   );

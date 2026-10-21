@@ -70,17 +70,17 @@ export default function TodayScreen() {
       <View style={{ gap: 9 }}>
         <Eyebrow>Lire · Your reading companion</Eyebrow>
         <PageTitle>Today</PageTitle>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 14 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 14 }}>
           {dateLabel(now)}
         </Text>
       </View>
 
       <Card style={{ padding: 22 }}>
         <Eyebrow>Time with a book</Eyebrow>
-        <Text style={{ color: colors.ink, fontFamily: fonts.display, fontSize: 44, lineHeight: 52 }}>
+        <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 44, lineHeight: 52 }}>
           {formatDuration(todaySeconds)}
         </Text>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
           A little reading counts. No goal required.
         </Text>
       </Card>
@@ -96,7 +96,7 @@ export default function TodayScreen() {
             {session.book_title}
           </Text>
           {session.book_author ? (
-            <Text style={{ color: '#D7E3D7', fontFamily: fonts.body, fontSize: 14 }}>
+            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 14 }}>
               {session.book_author}
             </Text>
           ) : null}
@@ -118,7 +118,7 @@ export default function TodayScreen() {
             </Button>
             <Button
               variant="outline"
-              style={{ flex: 1, borderColor: '#607D69' }}
+              style={{ flex: 1, borderColor: colors.border }}
               onPress={() => void runSessionAction('finish')}
             >
               Finish
@@ -129,7 +129,7 @@ export default function TodayScreen() {
             onPress={() => router.push({ pathname: '/book/[id]', params: { id: session.book_id } })}
             style={{ paddingVertical: 5 }}
           >
-            <Text style={{ color: '#D7E3D7', fontFamily: fonts.body, fontSize: 13, fontWeight: '600' }}>
+            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, fontWeight: '600' }}>
               View book details
             </Text>
           </Pressable>
@@ -137,10 +137,10 @@ export default function TodayScreen() {
       ) : (
         <Card style={{ padding: 20 }}>
           <Eyebrow>Ready when you are</Eyebrow>
-          <Text style={{ color: colors.ink, fontFamily: fonts.display, fontSize: 24, lineHeight: 30 }}>
+          <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 24, lineHeight: 30 }}>
             Make a little room for a book.
           </Text>
-          <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
             Choose a book from your library to start a session. Your timer stays on this device.
           </Text>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 3 }}>
@@ -164,8 +164,8 @@ export default function TodayScreen() {
                 accessibilityRole="button"
                 onPress={() => router.push({ pathname: '/book/[id]', params: { id: book.id } })}
                 style={{
-                  backgroundColor: colors.paperBright,
-                  borderColor: colors.line,
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
                   borderWidth: 1,
                   borderRadius: 16,
                   padding: spacing.card,
@@ -176,14 +176,14 @@ export default function TodayScreen() {
                 }}
               >
                 <View style={{ flex: 1, gap: 3 }}>
-                  <Text numberOfLines={1} style={{ color: colors.ink, fontFamily: fonts.display, fontSize: 18 }}>
+                  <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 18 }}>
                     {book.title}
                   </Text>
-                  <Text numberOfLines={1} style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 13 }}>
+                  <Text numberOfLines={1} style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
                     {book.author || 'Author not added'}
                   </Text>
                 </View>
-                <Text style={{ color: colors.forest, fontFamily: fonts.body, fontWeight: '700', fontSize: 12 }}>
+                <Text style={{ color: colors.accent, fontFamily: fonts.body, fontWeight: '700', fontSize: 12 }}>
                   Read →
                 </Text>
               </Pressable>
@@ -193,7 +193,7 @@ export default function TodayScreen() {
       ) : null}
 
       <View style={{ paddingBottom: 4 }}>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, textAlign: 'center' }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, textAlign: 'center' }}>
           Your library and reading history stay on this device.
         </Text>
       </View>

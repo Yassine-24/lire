@@ -19,6 +19,10 @@ The first release should feel private, quiet, and useful without an account. It 
 - **Sync:** A later milestone may sync library data and completed sessions for signed-in users. A live timer remains on the device where it was started.
 - **Data portability:** Add export before or alongside account sync.
 
+## Current progress
+
+The core offline reading loop is implemented: manual book entry, the library, session controls, and daily, weekly, monthly, and per-book reading time. Phase 3 is underway with local JSON backup and restore. Native simulator acceptance and timezone-transition validation remain open work.
+
 ## First-release experience
 
 ### Today

@@ -5,7 +5,7 @@
     "scheme": "lire",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yassineelshamy.lire"
@@ -24,7 +24,8 @@
           }
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

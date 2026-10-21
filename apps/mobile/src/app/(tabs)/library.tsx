@@ -68,7 +68,7 @@ export default function LibraryScreen() {
       <View style={{ gap: 9 }}>
         <Eyebrow>Your shelves, your pace</Eyebrow>
         <PageTitle>Library</PageTitle>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
           Keep the books you are reading and the ones you hope to pick up.
         </Text>
       </View>
@@ -81,15 +81,15 @@ export default function LibraryScreen() {
         accessibilityLabel="Search your library"
         onChangeText={setQuery}
         placeholder="Search title or author"
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={colors.textMuted}
         returnKeyType="search"
         style={{
           minHeight: 50,
-          backgroundColor: colors.paperBright,
-          borderColor: colors.line,
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
           borderWidth: 1,
           borderRadius: 15,
-          color: colors.ink,
+          color: colors.text,
           fontFamily: fonts.body,
           fontSize: 14,
           paddingHorizontal: 15,
@@ -108,7 +108,7 @@ export default function LibraryScreen() {
             />
           ))}
         </View>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 12 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>
           {visibleBooks.length} {visibleBooks.length === 1 ? 'book' : 'books'}
         </Text>
       </View>
@@ -140,9 +140,9 @@ export default function LibraryScreen() {
               style={{
                 minHeight: 91,
                 borderRadius: 18,
-                backgroundColor: colors.paperBright,
+                backgroundColor: colors.surface,
                 borderWidth: 1,
-                borderColor: colors.line,
+                borderColor: colors.border,
                 padding: 16,
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -154,31 +154,31 @@ export default function LibraryScreen() {
                   width: 42,
                   height: 56,
                   borderRadius: 8,
-                  backgroundColor: book.status === 'finished' ? colors.clayPale : colors.sage,
+                  backgroundColor: book.status === 'finished' ? colors.surfaceRaised : colors.accentSoft,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: book.status === 'finished' ? colors.clay : colors.forest, fontFamily: fonts.display, fontSize: 21 }}>
+                <Text style={{ color: book.status === 'finished' ? colors.accentLight : colors.accent, fontFamily: fonts.display, fontSize: 21 }}>
                   {book.title.slice(0, 1).toUpperCase()}
                 </Text>
               </View>
               <View style={{ flex: 1, gap: 4 }}>
-                <Text numberOfLines={1} style={{ color: colors.ink, fontFamily: fonts.display, fontSize: 18 }}>
+                <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.display, fontSize: 18 }}>
                   {book.title}
                 </Text>
-                <Text numberOfLines={1} style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 13 }}>
+                <Text numberOfLines={1} style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
                   {book.author || 'Author not added'}
                 </Text>
-                <Text style={{ color: colors.forest, fontFamily: fonts.body, fontSize: 11, fontWeight: '700' }}>
+                <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 11, fontWeight: '700' }}>
                   {statusLabels[book.status]}
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                <Text style={{ color: colors.ink, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>
+                <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>
                   {formatDuration(secondsFor(book.id))}
                 </Text>
-                <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 11 }}>
+                <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>
                   read
                 </Text>
               </View>

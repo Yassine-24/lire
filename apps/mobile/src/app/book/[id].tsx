@@ -97,10 +97,10 @@ export default function BookDetailScreen() {
     return (
       <Page>
         <Pressable accessibilityRole="link" onPress={() => router.back()}>
-          <Text style={{ color: colors.forest, fontFamily: fonts.body, fontWeight: '700' }}>‹ Back</Text>
+          <Text style={{ color: colors.accent, fontFamily: fonts.body, fontWeight: '700' }}>‹ Back</Text>
         </Pressable>
         <Card>
-          <Text style={{ color: colors.ink, fontFamily: fonts.display, fontSize: 20 }}>
+          <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 20 }}>
             {isLoading ? 'Loading book…' : error || 'This book is not in your library.'}
           </Text>
           <Button variant="outline" onPress={() => router.back()}>Go back</Button>
@@ -113,13 +113,13 @@ export default function BookDetailScreen() {
     <Page>
       <View style={{ gap: 10 }}>
         <Pressable accessibilityRole="link" onPress={() => router.back()} style={{ paddingVertical: 4 }}>
-          <Text style={{ color: colors.forest, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
+          <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
             ‹ Back
           </Text>
         </Pressable>
         <Eyebrow>Your book</Eyebrow>
         <PageTitle>{book.title}</PageTitle>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 15 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 15 }}>
           {book.author || 'Author not added'}
         </Text>
       </View>
@@ -128,10 +128,10 @@ export default function BookDetailScreen() {
 
       <Card style={{ padding: 20 }}>
         <Eyebrow>Reading time</Eyebrow>
-        <Text style={{ color: colors.ink, fontFamily: fonts.display, fontSize: 35 }}>
+        <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 35 }}>
           {formatDuration(history.reduce((total, item) => total + item.seconds, 0) + sessionSeconds)}
         </Text>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 13 }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
           {history.length + (matchingSession ? 1 : 0)} reading {history.length === 1 ? 'session' : 'sessions'}
         </Text>
       </Card>
@@ -158,7 +158,7 @@ export default function BookDetailScreen() {
             <Button
               variant="outline"
               disabled={busy}
-              style={{ flex: 1, borderColor: '#607D69' }}
+              style={{ flex: 1, borderColor: colors.border }}
               onPress={() => void perform('finish')}
             >
               Finish
@@ -189,7 +189,7 @@ export default function BookDetailScreen() {
         <SectionTitle detail={history.length > 0 ? String(history.length) : undefined}>Past sessions</SectionTitle>
         {history.length === 0 ? (
           <Card>
-            <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }}>
+            <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19 }}>
               Finished sessions with this book will appear here.
             </Text>
           </Card>
@@ -197,10 +197,10 @@ export default function BookDetailScreen() {
           <View style={{ gap: 9 }}>
             {history.map((item) => (
               <Card key={item.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ color: colors.muted, fontFamily: fonts.body, fontSize: 13 }}>
+                <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
                   {new Date(item.completed_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </Text>
-                <Text style={{ color: colors.ink, fontFamily: fonts.body, fontWeight: '700', fontSize: 13 }}>
+                <Text style={{ color: colors.text, fontFamily: fonts.body, fontWeight: '700', fontSize: 13 }}>
                   {formatDuration(item.seconds)}
                 </Text>
               </Card>

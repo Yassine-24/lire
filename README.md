@@ -1,6 +1,6 @@
 # Lire
 
-Lire is a free, open-source reading companion for iOS and Android. It helps readers keep a personal library, track sessions, and see the time they spend with books.
+Lire is a free, open-source reading companion. It helps readers keep a personal library, track sessions, and see the time they spend with books.
 
 The app is local-first: creating an account is optional, and the timer always runs on the device where it was started. The mobile app is the product; a small website can later host project, privacy, and support pages.
 

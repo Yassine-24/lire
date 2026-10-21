@@ -39,7 +39,7 @@ export async function setDailyReminder(
   enabled: boolean,
   time: string,
 ): Promise<void> {
-  if (Platform.OS === 'web') throw new Error('Reading reminders are available in the installed iOS and Android apps.');
+  if (Platform.OS === 'web') throw new Error('Reading reminders are not available in the browser build yet.');
 
   const match = enabled ? /^(\d{2}):(\d{2})$/.exec(time) : null;
   if (enabled && !match) throw new Error('Enter a reminder time as HH:MM using the 24-hour clock.');

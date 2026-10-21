@@ -271,7 +271,7 @@ export default function ProfileScreen() {
         <Eyebrow>Reading reminder</Eyebrow>
         <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 20 }}>A gentle daily nudge</Text>
         {Platform.OS === 'web' ? (
-          <StatusMessage>Reminders are available in the installed iOS and Android apps.</StatusMessage>
+          <StatusMessage>Reading reminders are not available in the browser build yet.</StatusMessage>
         ) : (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

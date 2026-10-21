@@ -19,7 +19,7 @@ export type BackupSegment = {
 
 export type LireBackup = {
   format: 'lire-backup';
-  version: 1;
+  version: 2;
   exportedAt: string;
   books: Book[];
   sessions: BackupSession[];
@@ -48,7 +48,7 @@ export async function createBackup(db: SQLiteDatabase): Promise<string> {
   await withAppTransaction(db, async (transaction) => {
     const exportedAt = new Date().toISOString();
     const books = await transaction.getAllAsync<Book>(
-      'SELECT id, title, author, status, created_at, updated_at FROM books ORDER BY created_at ASC, id ASC',
+      'SELECT id, title, author, status, page_count, current_page, created_at, updated_at FROM books ORDER BY created_at ASC, id ASC',
     );
     const sessions = await transaction.getAllAsync<BackupSession>(
       'SELECT id, book_id, status, started_at, completed_at FROM reading_sessions ORDER BY started_at ASC, id ASC',
@@ -70,7 +70,7 @@ export async function createBackup(db: SQLiteDatabase): Promise<string> {
 
     backup = {
       format: 'lire-backup',
-      version: 1,
+      version: 2,
       exportedAt,
       books,
       sessions: snapshotSessions,
@@ -89,7 +89,12 @@ export function parseBackup(contents: string): LireBackup {
   } catch {
     throw new Error('This file is not valid JSON.');
   }
-  if (!isRecord(raw) || raw.format !== 'lire-backup' || raw.version !== 1 || !isTimestamp(raw.exportedAt)) {
+  if (
+    !isRecord(raw) ||
+    raw.format !== 'lire-backup' ||
+    (raw.version !== 1 && raw.version !== 2) ||
+    !isTimestamp(raw.exportedAt)
+  ) {
     throw new Error('This backup was created by an incompatible version of Lire.');
   }
   if (!Array.isArray(raw.books) || !Array.isArray(raw.sessions) || !Array.isArray(raw.segments)) {
@@ -97,6 +102,8 @@ export function parseBackup(contents: string): LireBackup {
   }
 
   const books = raw.books.map((item): Book => {
+    const pageCount = raw.version === 1 ? null : isRecord(item) ? item.page_count : undefined;
+    const currentPage = raw.version === 1 ? 0 : isRecord(item) ? item.current_page : undefined;
     if (
       !isRecord(item) ||
       !isNonEmptyString(item.id) ||
@@ -104,7 +111,12 @@ export function parseBackup(contents: string): LireBackup {
       !(item.author === null || typeof item.author === 'string') ||
       !(['reading', 'want_to_read', 'finished'] as unknown[]).includes(item.status) ||
       !isTimestamp(item.created_at) ||
-      !isTimestamp(item.updated_at)
+      !isTimestamp(item.updated_at) ||
+      !(pageCount === null || (typeof pageCount === 'number' && Number.isSafeInteger(pageCount) && pageCount > 0)) ||
+      typeof currentPage !== 'number' ||
+      !Number.isSafeInteger(currentPage) ||
+      currentPage < 0 ||
+      (pageCount !== null && currentPage > pageCount)
     ) {
       throw invalidBackup();
     }
@@ -113,6 +125,8 @@ export function parseBackup(contents: string): LireBackup {
       title: item.title,
       author: item.author,
       status: item.status as BookStatus,
+      page_count: pageCount,
+      current_page: currentPage,
       created_at: item.created_at,
       updated_at: item.updated_at,
     };
@@ -216,7 +230,7 @@ export function parseBackup(contents: string): LireBackup {
   const exportedAt = raw.exportedAt;
   return {
     format: 'lire-backup',
-    version: 1,
+    version: 2,
     exportedAt,
     books,
     sessions: sessions.map((session) =>
@@ -236,11 +250,13 @@ export async function restoreBackup(db: SQLiteDatabase, backup: LireBackup): Pro
 
     for (const book of backup.books) {
       await transaction.runAsync(
-        'INSERT INTO books (id, title, author, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO books (id, title, author, status, page_count, current_page, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         book.id,
         book.title,
         book.author,
         book.status,
+        book.page_count,
+        book.current_page,
         book.created_at,
         book.updated_at,
       );

@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.8,
+    letterSpacing: 2.1,
     textTransform: 'uppercase',
   },
   pageTitle: {
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 34,
     lineHeight: 40,
-    letterSpacing: -0.6,
+    letterSpacing: -0.8,
   },
   sectionHeading: {
     flexDirection: 'row',
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: 22,
+    borderRadius: 20,
     padding: spacing.card,
     gap: 12,
   },

@@ -3,6 +3,7 @@ export type CatalogBook = {
   title: string;
   author: string | null;
   firstPublishYear: number | null;
+  pageCount: number | null;
 };
 
 type SearchDocument = {
@@ -10,6 +11,8 @@ type SearchDocument = {
   title?: unknown;
   author_name?: unknown;
   first_publish_year?: unknown;
+  number_of_pages?: unknown;
+  number_of_pages_median?: unknown;
 };
 
 const searchCache = new Map<string, CatalogBook[]>();
@@ -42,7 +45,7 @@ export async function searchCatalog(query: string): Promise<CatalogBook[]> {
 
   const params = new URLSearchParams({
     q: trimmed,
-    fields: 'key,title,author_name,first_publish_year',
+    fields: 'key,title,author_name,first_publish_year,number_of_pages,number_of_pages_median',
     limit: '20',
   });
 
@@ -76,6 +79,10 @@ export async function searchCatalog(query: string): Promise<CatalogBook[]> {
           typeof document.first_publish_year === 'number' && Number.isInteger(document.first_publish_year)
             ? document.first_publish_year
             : null,
+        pageCount: [document.number_of_pages, document.number_of_pages_median].find(
+          (value): value is number =>
+            typeof value === 'number' && Number.isSafeInteger(value) && value > 0,
+        ) ?? null,
       }];
     });
     if (searchCache.size >= 50) {

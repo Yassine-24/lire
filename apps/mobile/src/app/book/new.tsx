@@ -13,6 +13,12 @@ const statusOptions: { key: BookStatus; label: string }[] = [
   { key: 'finished', label: 'Finished' },
 ];
 
+function parseCurrentPage(value: string): number | null {
+  if (!value.trim()) return 0;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
 function returnToPreviousScreen() {
   if (router.canGoBack()) {
     router.back();
@@ -26,6 +32,7 @@ export default function NewBookScreen() {
   const db = useSQLiteContext();
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
+  const [currentPage, setCurrentPage] = useState('');
   const [status, setStatus] = useState<BookStatus>('reading');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -41,10 +48,22 @@ export default function NewBookScreen() {
       setError('A title is needed to add this book.');
       return;
     }
+
+    const parsedCurrentPage = parseCurrentPage(currentPage);
+    if (parsedCurrentPage === null) {
+      setError('Enter the current page as a whole number of zero or more.');
+      return;
+    }
+
     setSaving(true);
     setError('');
     try {
-      const id = await createBook(db, { title, author, status });
+      const id = await createBook(db, {
+        title,
+        author,
+        status,
+        currentPage: parsedCurrentPage,
+      });
       router.replace({ pathname: '/book/[id]', params: { id } });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'This book could not be saved.');
@@ -67,10 +86,26 @@ export default function NewBookScreen() {
   }
 
   async function addCatalogBook(book: CatalogBook) {
+    const parsedCurrentPage = parseCurrentPage(currentPage);
+    if (parsedCurrentPage === null) {
+      setCatalogError('Enter the current page as a whole number of zero or more.');
+      return;
+    }
+    if (book.pageCount !== null && parsedCurrentPage > book.pageCount) {
+      setCatalogError('Current page cannot be greater than the page total from Open Library.');
+      return;
+    }
+
     setAddingCatalogKey(book.key);
     setCatalogError('');
     try {
-      const id = await createBook(db, { title: book.title, author: book.author ?? '', status });
+      const id = await createBook(db, {
+        title: book.title,
+        author: book.author ?? '',
+        status,
+        currentPage: parsedCurrentPage,
+        pageCount: book.pageCount,
+      });
       router.replace({ pathname: '/book/[id]', params: { id } });
     } catch (cause) {
       setCatalogError(cause instanceof Error ? cause.message : 'This book could not be saved.');
@@ -108,6 +143,18 @@ export default function NewBookScreen() {
           ))}
         </View>
       </View>
+
+      <Card style={{ gap: 9 }}>
+        <Eyebrow>Reading position</Eyebrow>
+        <Field
+          label="Current page (optional)"
+          keyboardType="number-pad"
+          onChangeText={setCurrentPage}
+          placeholder="0"
+          returnKeyType="done"
+          value={currentPage}
+        />
+      </Card>
 
       <Card>
         <Eyebrow>Search Open Library</Eyebrow>
@@ -175,6 +222,7 @@ export default function NewBookScreen() {
               <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>
                 {book.author || 'Author not listed'}
                 {book.firstPublishYear ? ` · First published ${book.firstPublishYear}` : ''}
+                {book.pageCount ? ` · ${book.pageCount} pages` : ''}
               </Text>
             </View>
             <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>
@@ -184,7 +232,7 @@ export default function NewBookScreen() {
         ))}
         <View style={{ alignItems: 'center', gap: 4 }}>
           <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>
-            Catalog data from
+            Catalog data and page totals from
           </Text>
           <Pressable
             accessibilityRole="link"

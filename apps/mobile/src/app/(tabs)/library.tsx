@@ -141,7 +141,7 @@ export default function LibraryScreen() {
               accessibilityLabel={book.title + ', ' + statusLabels[book.status]}
               onPress={() => router.push({ pathname: '/book/[id]', params: { id: book.id } })}
               style={{
-                minHeight: 91,
+                minHeight: 98,
                 borderRadius: 18,
                 backgroundColor: colors.surface,
                 borderWidth: 1,
@@ -173,9 +173,27 @@ export default function LibraryScreen() {
                 <Text numberOfLines={1} style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
                   {book.author || 'Author not added'}
                 </Text>
-                <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 11, fontWeight: '700' }}>
-                  {statusLabels[book.status]}
-                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 10, fontWeight: '700', letterSpacing: 0.5 }}>
+                    {statusLabels[book.status].toUpperCase()}
+                  </Text>
+                  {book.page_count ? (
+                    <Text style={{ color: colors.textMuted, fontFamily: fonts.mono, fontSize: 9 }}>
+                      PAGE {book.current_page}/{book.page_count}
+                    </Text>
+                  ) : null}
+                </View>
+                {book.page_count ? (
+                  <View style={{ height: 3, borderRadius: 4, backgroundColor: colors.border, overflow: 'hidden', marginTop: 2 }}>
+                    <View
+                      style={{
+                        height: 3,
+                        width: Math.min(100, Math.round((book.current_page / book.page_count) * 100)) + '%',
+                        backgroundColor: colors.accent,
+                      }}
+                    />
+                  </View>
+                ) : null}
               </View>
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
                 <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>

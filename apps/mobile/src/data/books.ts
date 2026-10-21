@@ -10,6 +10,8 @@ export type Book = {
   title: string;
   author: string | null;
   status: BookStatus;
+  page_count: number | null;
+  current_page: number;
   created_at: string;
   updated_at: string;
 };
@@ -40,39 +42,84 @@ export type SessionHistoryItem = {
 
 export async function listBooks(db: SQLiteDatabase): Promise<Book[]> {
   return db.getAllAsync<Book>(
-    "SELECT id, title, author, status, created_at, updated_at FROM books ORDER BY CASE status WHEN 'reading' THEN 0 WHEN 'want_to_read' THEN 1 ELSE 2 END, updated_at DESC, title COLLATE NOCASE ASC",
+    "SELECT id, title, author, status, page_count, current_page, created_at, updated_at FROM books ORDER BY CASE status WHEN 'reading' THEN 0 WHEN 'want_to_read' THEN 1 ELSE 2 END, updated_at DESC, title COLLATE NOCASE ASC",
   );
 }
 
 export async function getBook(db: SQLiteDatabase, id: string): Promise<Book | null> {
   return db.getFirstAsync<Book>(
-    'SELECT id, title, author, status, created_at, updated_at FROM books WHERE id = ?',
+    'SELECT id, title, author, status, page_count, current_page, created_at, updated_at FROM books WHERE id = ?',
     id,
   );
 }
 
 export async function createBook(
   db: SQLiteDatabase,
-  input: { title: string; author?: string; status: BookStatus },
+  input: {
+    title: string;
+    author?: string;
+    status: BookStatus;
+    currentPage?: number;
+    pageCount?: number | null;
+  },
 ): Promise<string> {
   const title = input.title.trim();
   const author = input.author?.trim() || null;
   if (!title) throw new Error('Add a title before saving.');
+  const pageCount = input.pageCount ?? null;
+  const currentPage = input.currentPage ?? 0;
+  if (!Number.isSafeInteger(currentPage) || currentPage < 0) {
+    throw new Error('Current page must be a whole number of zero or more.');
+  }
+  if (pageCount !== null && (!Number.isSafeInteger(pageCount) || pageCount < 1)) {
+    throw new Error('Total pages must be a positive whole number.');
+  }
+  if (pageCount !== null && currentPage > pageCount) {
+    throw new Error('Current page cannot be greater than the total pages.');
+  }
 
   const id = Crypto.randomUUID();
   const now = new Date().toISOString();
   await withAppTransaction(db, async (transaction) => {
     await transaction.runAsync(
-      'INSERT INTO books (id, title, author, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO books (id, title, author, status, page_count, current_page, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       id,
       title,
       author,
       input.status,
+      pageCount,
+      currentPage,
       now,
       now,
     );
   });
   return id;
+}
+
+export async function updateBookProgress(
+  db: SQLiteDatabase,
+  id: string,
+  input: { currentPage: number; pageCount: number | null },
+): Promise<void> {
+  if (!Number.isSafeInteger(input.currentPage) || input.currentPage < 0) {
+    throw new Error('Current page must be a whole number of zero or more.');
+  }
+  if (input.pageCount !== null && (!Number.isSafeInteger(input.pageCount) || input.pageCount < 1)) {
+    throw new Error('Total pages must be a positive whole number.');
+  }
+  if (input.pageCount !== null && input.currentPage > input.pageCount) {
+    throw new Error('Current page cannot be greater than the total pages.');
+  }
+
+  await withAppTransaction(db, async (transaction) => {
+    await transaction.runAsync(
+      'UPDATE books SET current_page = ?, page_count = ?, updated_at = ? WHERE id = ?',
+      input.currentPage,
+      input.pageCount,
+      new Date().toISOString(),
+      id,
+    );
+  });
 }
 
 export async function updateBookStatus(

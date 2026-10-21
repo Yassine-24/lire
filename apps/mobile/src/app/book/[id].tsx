@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { getBook, getBookSessionHistory, getCurrentSession, updateBookStatus, type Book, type BookStatus, type CurrentSession, type SessionHistoryItem } from '@/data/books';
+import { getBook, getBookSessionHistory, getCurrentSession, updateBookProgress, updateBookStatus, type Book, type BookStatus, type CurrentSession, type SessionHistoryItem } from '@/data/books';
 import { finishSession, pauseSession, resumeSession, startSession } from '@/data/reading';
-import { Button, Card, Chip, Eyebrow, Page, PageTitle, SectionTitle, StatusMessage } from '@/components/ui';
+import { Button, Card, Chip, Eyebrow, Field, Page, PageTitle, SectionTitle, StatusMessage } from '@/components/ui';
 import { colors, fonts } from '@/design/tokens';
 import { formatDuration, sumSegmentSeconds } from '@/domain/time';
 
@@ -34,6 +34,9 @@ export default function BookDetailScreen() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPageDraft, setCurrentPageDraft] = useState('0');
+  const [progressSaving, setProgressSaving] = useState(false);
+  const [progressMessage, setProgressMessage] = useState('');
 
   const load = useCallback(async () => {
     if (!id) {
@@ -46,6 +49,7 @@ export default function BookDetailScreen() {
       getBookSessionHistory(db, id),
     ]);
     setBook(nextBook);
+    if (nextBook) setCurrentPageDraft(String(nextBook.current_page));
     setSession(nextSession);
     setHistory(nextHistory);
     setNow(new Date());
@@ -102,6 +106,32 @@ export default function BookDetailScreen() {
     }
   }
 
+  async function saveProgress() {
+    if (!book) return;
+    const currentPage = currentPageDraft.trim() ? Number(currentPageDraft) : 0;
+    if (!Number.isSafeInteger(currentPage) || currentPage < 0) {
+      setError('Current page must be a whole number of zero or more.');
+      return;
+    }
+    if (book.page_count !== null && currentPage > book.page_count) {
+      setError('Current page cannot be greater than the page total from Open Library.');
+      return;
+    }
+
+    setProgressSaving(true);
+    setError('');
+    setProgressMessage('');
+    try {
+      await updateBookProgress(db, book.id, { currentPage, pageCount: book.page_count });
+      await load();
+      setProgressMessage('Reading position saved.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Reading position could not be saved.');
+    } finally {
+      setProgressSaving(false);
+    }
+  }
+
   if (!book) {
     return (
       <Page>
@@ -143,6 +173,50 @@ export default function BookDetailScreen() {
         <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13 }}>
           {history.length + (matchingSession ? 1 : 0)} reading {history.length === 1 ? 'session' : 'sessions'}
         </Text>
+      </Card>
+
+      <Card style={{ padding: 20, gap: 14 }}>
+        <View style={{ gap: 5 }}>
+          <Eyebrow>Reading progress</Eyebrow>
+          <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 21, fontWeight: '700' }}>
+            {book.page_count === null
+              ? `Page ${book.current_page}`
+              : `Page ${book.current_page} of ${book.page_count}`}
+          </Text>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 }}>
+            {book.page_count === null
+              ? 'Open Library has no page total for this edition.'
+              : `${Math.round((book.current_page / book.page_count) * 100)}% complete · ${Math.max(0, book.page_count - book.current_page)} pages to go`}
+          </Text>
+        </View>
+        {book.page_count !== null ? (
+          <View style={{ height: 7, borderRadius: 8, backgroundColor: colors.border, overflow: 'hidden' }}>
+            <View
+              style={{
+                height: 7,
+                width: Math.min(100, Math.round((book.current_page / book.page_count) * 100)) + '%',
+                borderRadius: 8,
+                backgroundColor: colors.accent,
+              }}
+            />
+          </View>
+        ) : null}
+        <Field
+          label="Current page"
+          keyboardType="number-pad"
+          onChangeText={setCurrentPageDraft}
+          placeholder="0"
+          returnKeyType="done"
+          value={currentPageDraft}
+        />
+        {progressMessage ? (
+          <Text style={{ color: colors.accentLight, fontFamily: fonts.body, fontSize: 12 }}>
+            {progressMessage}
+          </Text>
+        ) : null}
+        <Button disabled={progressSaving} onPress={() => void saveProgress()}>
+          {progressSaving ? 'Saving…' : 'Update page'}
+        </Button>
       </Card>
 
       {session && session.book_id !== id ? (

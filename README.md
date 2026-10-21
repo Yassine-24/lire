@@ -8,7 +8,7 @@ The current product is a Django web app. An account is required; books, notes, p
 
 - A Today page with a live circular clock for today’s reading time, one active session, and visible start, pause, resume, and finish controls.
 - A private library with search, list or tile view, four shelves, Open Library lookup, cover art, and page totals.
-- Book details with editable page progress, dates, private notes, ratings, per-book reading time, and session history.
+- Book details with editable page progress, dates, private notes, ratings, per-book reading time, and session history. Reaching the last page marks the book finished automatically.
 - Daily, weekly, and monthly reading summaries, a 14-day chart, and time by book.
 - Goodreads CSV preview and import, with ISBN-first duplicate checks and an option to import another copy.
 - JSON backup and restore. Restore accepts Lire backup versions 1–3, including backups from the earlier browser build.

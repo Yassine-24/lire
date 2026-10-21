@@ -269,12 +269,25 @@ def book_progress(request, book_id):
         return redirect("book-detail", book_id=book.pk)
     page_count = form.cleaned_data["page_count"]
     current_page = form.cleaned_data["current_page"]
+    reached_last_page = (
+        book.status != Book.Status.FINISHED
+        and page_count is not None
+        and current_page == page_count
+    )
     if book.status == Book.Status.FINISHED and page_count:
         current_page = page_count
+    if reached_last_page:
+        now = _now()
+        book.status = Book.Status.FINISHED
+        book.started_at = book.started_at or now
+        book.finished_at = book.finished_at or now
     book.page_count = page_count
     book.current_page = current_page
-    book.save(update_fields=["page_count", "current_page", "updated_at"])
-    messages.success(request, "Reading progress saved.")
+    book.save(update_fields=["status", "started_at", "finished_at", "page_count", "current_page", "updated_at"])
+    if reached_last_page:
+        messages.success(request, "You reached the last page. This book is marked finished.")
+    else:
+        messages.success(request, "Reading progress saved.")
     return redirect("book-detail", book_id=book.pk)
 
 

@@ -150,13 +150,18 @@ export default function BookDetailScreen() {
       return;
     }
 
+    const reachedLastPage = book.status !== 'finished'
+      && pageCount !== null
+      && currentPage === pageCount;
     setProgressSaving(true);
     setError('');
     setProgressMessage('');
     try {
       await updateBookProgress(db, book.id, { currentPage, pageCount });
       await load();
-      setProgressMessage('Reading position saved.');
+      setProgressMessage(reachedLastPage
+        ? 'You reached the last page. This book is marked finished.'
+        : 'Reading position saved.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Reading position could not be saved.');
     } finally {

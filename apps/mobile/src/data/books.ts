@@ -141,13 +141,30 @@ export async function updateBookProgress(
   }
 
   await withAppTransaction(db, async (transaction) => {
+    const book = await transaction.getFirstAsync<{
+      status: BookStatus;
+      started_at: string | null;
+      finished_at: string | null;
+    }>('SELECT status, started_at, finished_at FROM books WHERE id = ?', id);
+    if (!book) throw new Error('This book is no longer in your library.');
+
+    const now = new Date().toISOString();
+    const reachedLastPage = book.status !== 'finished'
+      && input.pageCount !== null
+      && input.currentPage === input.pageCount;
+    const status: BookStatus = reachedLastPage ? 'finished' : book.status;
+    const currentPage = status === 'finished' && input.pageCount !== null
+      ? input.pageCount
+      : input.currentPage;
+
     await transaction.runAsync(
-      "UPDATE books SET current_page = CASE WHEN status = 'finished' AND ? IS NOT NULL THEN ? ELSE ? END, page_count = ?, updated_at = ? WHERE id = ?",
+      'UPDATE books SET status = ?, current_page = ?, page_count = ?, started_at = ?, finished_at = ?, updated_at = ? WHERE id = ?',
+      status,
+      currentPage,
       input.pageCount,
-      input.pageCount,
-      input.currentPage,
-      input.pageCount,
-      new Date().toISOString(),
+      reachedLastPage ? book.started_at ?? now : book.started_at,
+      status === 'finished' ? book.finished_at ?? now : book.finished_at,
+      now,
       id,
     );
   });

@@ -32,7 +32,7 @@ Lire is free and open source under MIT. It is not a social network, bookstore, e
 
 - Add a book manually or search Open Library for title, author, ISBN, cover, publication year, and estimated page total.
 - Make the catalog search the first step; let the reader inspect and edit catalog details before saving.
-- Set current page and total pages independently.
+- Set current page and total pages independently. Reaching the last page moves the book to Finished automatically.
 - Organize books into Want to read, Reading, Finished, or Paused shelves. Search the library and switch between compact list and tile views.
 - Show book covers when available, with a styled fallback for missing artwork.
 - Track current page, start and finish dates, optional one-to-five rating, and private notes.

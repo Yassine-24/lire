@@ -76,6 +76,9 @@ export default function LibraryScreen() {
       {error ? <StatusMessage warning>{error}</StatusMessage> : null}
 
       <Button onPress={() => router.push('/book/new')}>Add a book</Button>
+      <Button variant="outline" onPress={() => router.push('/import-goodreads')}>
+        Import Goodreads CSV
+      </Button>
 
       <TextInput
         accessibilityLabel="Search your library"

@@ -16,6 +16,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="backup" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="import-goodreads" options={{ presentation: 'modal' }} />
         <Stack.Screen name="book/new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="book/[id]" />
       </Stack>

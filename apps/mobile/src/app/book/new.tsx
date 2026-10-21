@@ -1,10 +1,17 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
+import { Button, Card, Chip, Eyebrow, Field, Page, PageTitle, StatusMessage } from '@/components/ui';
 import { createBook, type BookStatus } from '@/data/books';
-import { Button, Chip, Eyebrow, Field, Page, PageTitle, StatusMessage } from '@/components/ui';
+import { searchCatalog, type CatalogBook } from '@/data/catalog';
 import { colors, fonts } from '@/design/tokens';
+
+const statusOptions: { key: BookStatus; label: string }[] = [
+  { key: 'reading', label: 'Reading' },
+  { key: 'want_to_read', label: 'Want to read' },
+  { key: 'finished', label: 'Finished' },
+];
 
 export default function NewBookScreen() {
   const db = useSQLiteContext();
@@ -13,6 +20,12 @@ export default function NewBookScreen() {
   const [status, setStatus] = useState<BookStatus>('reading');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [catalogQuery, setCatalogQuery] = useState('');
+  const [catalogResults, setCatalogResults] = useState<CatalogBook[]>([]);
+  const [catalogSearched, setCatalogSearched] = useState(false);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
+  const [addingCatalogKey, setAddingCatalogKey] = useState('');
 
   async function saveBook() {
     if (!title.trim()) {
@@ -30,6 +43,32 @@ export default function NewBookScreen() {
     }
   }
 
+  async function searchBooks() {
+    setCatalogLoading(true);
+    setCatalogError('');
+    setCatalogSearched(true);
+    try {
+      setCatalogResults(await searchCatalog(catalogQuery));
+    } catch (cause) {
+      setCatalogResults([]);
+      setCatalogError(cause instanceof Error ? cause.message : 'The book catalog could not be searched.');
+    } finally {
+      setCatalogLoading(false);
+    }
+  }
+
+  async function addCatalogBook(book: CatalogBook) {
+    setAddingCatalogKey(book.key);
+    setCatalogError('');
+    try {
+      const id = await createBook(db, { title: book.title, author: book.author ?? '', status });
+      router.replace({ pathname: '/book/[id]', params: { id } });
+    } catch (cause) {
+      setCatalogError(cause instanceof Error ? cause.message : 'This book could not be saved.');
+      setAddingCatalogKey('');
+    }
+  }
+
   return (
     <Page>
       <View style={{ gap: 9 }}>
@@ -41,7 +80,118 @@ export default function NewBookScreen() {
         <Eyebrow>Make a place on your shelf</Eyebrow>
         <PageTitle>Add a book</PageTitle>
         <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 }}>
-          A title is enough to begin. You can add details later.
+          Search a book catalog or enter the details yourself.
+        </Text>
+      </View>
+
+      <View style={{ gap: 12 }}>
+        <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
+          Add it to
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {statusOptions.map((option) => (
+            <Chip
+              key={option.key}
+              label={option.label}
+              active={status === option.key}
+              onPress={() => setStatus(option.key)}
+            />
+          ))}
+        </View>
+      </View>
+
+      <Card>
+        <Eyebrow>Search Open Library</Eyebrow>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 }}>
+          Find a title or author in the public book catalog. Searching requires an internet connection.
+        </Text>
+        <TextInput
+          accessibilityLabel="Search the book catalog"
+          autoCapitalize="none"
+          editable={!catalogLoading}
+          onChangeText={(value) => {
+            setCatalogQuery(value);
+            setCatalogResults([]);
+            setCatalogSearched(false);
+            setCatalogError('');
+          }}
+          onSubmitEditing={() => void searchBooks()}
+          placeholder="Title or author"
+          placeholderTextColor={colors.textMuted}
+          returnKeyType="search"
+          style={{
+            minHeight: 50,
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderWidth: 1,
+            borderRadius: 15,
+            color: colors.text,
+            fontFamily: fonts.body,
+            fontSize: 14,
+            paddingHorizontal: 15,
+          }}
+          value={catalogQuery}
+        />
+        <Button disabled={catalogLoading || catalogQuery.trim().length < 2} onPress={() => void searchBooks()}>
+          {catalogLoading ? 'Searching…' : 'Search catalog'}
+        </Button>
+        {catalogError ? <StatusMessage warning>{catalogError}</StatusMessage> : null}
+        {catalogSearched && !catalogLoading && !catalogError && catalogResults.length === 0 ? (
+          <StatusMessage>No matching books found. Try another title or author.</StatusMessage>
+        ) : null}
+        {catalogResults.map((book) => (
+          <Pressable
+            key={book.key}
+            accessibilityRole="button"
+            accessibilityLabel={`Add ${book.title}${book.author ? ` by ${book.author}` : ''} to Lire`}
+            accessibilityState={{ disabled: addingCatalogKey.length > 0 }}
+            disabled={addingCatalogKey.length > 0}
+            onPress={() => void addCatalogBook(book)}
+            style={({ pressed }) => ({
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceRaised,
+              padding: 13,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              opacity: pressed ? 0.75 : 1,
+            })}
+          >
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 16 }}>
+                {book.title}
+              </Text>
+              <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12 }}>
+                {book.author || 'Author not listed'}
+                {book.firstPublishYear ? ` · First published ${book.firstPublishYear}` : ''}
+              </Text>
+            </View>
+            <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>
+              {addingCatalogKey === book.key ? 'Adding…' : 'Add'}
+            </Text>
+          </Pressable>
+        ))}
+        <View style={{ alignItems: 'center', gap: 4 }}>
+          <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>
+            Catalog data from
+          </Text>
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => void Linking.openURL('https://openlibrary.org').catch(() => {})}
+          >
+            <Text style={{ color: colors.accent, fontFamily: fonts.body, fontSize: 12, fontWeight: '700' }}>
+              Open Library
+            </Text>
+          </Pressable>
+        </View>
+      </Card>
+
+      <View style={{ gap: 6 }}>
+        <Eyebrow>Manual entry</Eyebrow>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 }}>
+          Or add a title that is not in the catalog.
         </Text>
       </View>
 
@@ -50,7 +200,6 @@ export default function NewBookScreen() {
       <View style={{ gap: 18 }}>
         <Field
           label="Title"
-          autoFocus
           autoCapitalize="words"
           onChangeText={setTitle}
           placeholder="The book’s title"
@@ -65,16 +214,6 @@ export default function NewBookScreen() {
           returnKeyType="done"
           value={author}
         />
-      </View>
-
-      <View style={{ gap: 12 }}>
-        <Text style={{ color: colors.text, fontFamily: fonts.body, fontSize: 13, fontWeight: '700' }}>
-          Shelf
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          <Chip label="Reading" active={status === 'reading'} onPress={() => setStatus('reading')} />
-          <Chip label="Want to read" active={status === 'want_to_read'} onPress={() => setStatus('want_to_read')} />
-        </View>
       </View>
 
       <View style={{ gap: 11, marginTop: 5 }}>

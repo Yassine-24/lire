@@ -103,7 +103,7 @@ export async function getCurrentSession(db: SQLiteDatabase): Promise<CurrentSess
   if (!session) return null;
 
   const segments = await db.getAllAsync<ReadingSegment>(
-    'SELECT segments.id, segments.session_id, sessions.book_id, segments.started_at, segments.ended_at FROM session_segments AS segments JOIN reading_sessions AS sessions ON sessions.id = sessions.session_id WHERE segments.session_id = ? ORDER BY segments.started_at ASC',
+    'SELECT segments.id, segments.session_id, sessions.book_id, segments.started_at, segments.ended_at FROM session_segments AS segments JOIN reading_sessions AS sessions ON sessions.id = segments.session_id WHERE segments.session_id = ? ORDER BY segments.started_at ASC',
     session.id,
   );
   return { ...session, segments };

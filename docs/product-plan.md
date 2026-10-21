@@ -13,15 +13,15 @@ The first release should feel private, quiet, and useful without an account. It 
 - **First-release price:** Free.
 - **Core measure:** Reading time.
 - **Account:** Optional and deferred. Local use should not require signup.
-- **Privacy:** The first release stores books and reading history on the device. No analytics or advertising are in scope.
+- **Privacy:** The first release stores books and reading history on the device. Catalog searches send the search text to Open Library; no analytics or advertising are in scope.
 - **License:** MIT.
-- **Book entry:** Manual entry first. Goodreads CSV import follows the first release.
+- **Book entry:** Add books manually, search the Open Library catalog, or import a Goodreads library CSV.
 - **Sync:** A later milestone may sync library data and completed sessions for signed-in users. A live timer remains on the device where it was started.
 - **Data portability:** Add export before or alongside account sync.
 
 ## Current progress
 
-The core offline reading loop is implemented: manual book entry, the library, session controls, and daily, weekly, monthly, and per-book reading time. Phase 3 is underway with local JSON backup and restore. Native simulator acceptance and timezone-transition validation remain open work.
+The core offline reading loop is implemented with local JSON backup and restore, Goodreads CSV import, and Open Library catalog search. Native simulator acceptance and timezone-transition validation remain open work.
 
 ## First-release experience
 
@@ -35,6 +35,8 @@ The core offline reading loop is implemented: manual book entry, the library, se
 ### Library
 
 - Add a book by title and optionally author.
+- Search the Open Library catalog and add a selected title and author.
+- Import books and shelf status from a Goodreads CSV export.
 - Mark a book as Reading, Want to read, or Finished.
 - Browse and filter the personal library.
 - See accumulated reading time for each book.
@@ -55,12 +57,11 @@ Future sync should use stable IDs, idempotent writes, and an explicit conflict p
 
 ## Out of scope for the first release
 
-- Goodreads import
 - Public profiles, follows, reviews, or social feeds
 - Ratings and journaling
 - Paid plans or subscriptions
 - Push reminders, widgets, or watch apps
-- Book-catalog search or cover-image sourcing
+- Cover-image sourcing
 - Cross-device live timer handoff
 - Web app or PWA parity
 

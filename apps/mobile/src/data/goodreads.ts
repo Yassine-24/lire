@@ -278,12 +278,13 @@ export async function importGoodreadsBooks(
       const id = Crypto.randomUUID();
       const now = new Date().toISOString();
       await transaction.runAsync(
-        'INSERT INTO books (id, title, author, status, page_count, current_page, isbn, cover_url, published_year, started_at, finished_at, rating, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO books (id, title, author, status, page_count, current_page, isbn, cover_url, published_year, started_at, finished_at, rating, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         id,
         book.title.trim(),
         book.author,
         book.status,
         book.pageCount,
+        book.status === 'finished' && book.pageCount !== null ? book.pageCount : 0,
         book.isbn,
         coverFromIsbn(book.isbn),
         book.publishedYear,

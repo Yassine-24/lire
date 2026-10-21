@@ -169,7 +169,7 @@ export default function LibraryScreen() {
         <View style={{ gap: displayMode === 'tiles' ? 8 : 12, flexDirection: displayMode === 'tiles' ? 'row' : 'column', flexWrap: displayMode === 'tiles' ? 'wrap' : 'nowrap' }}>
           {visibleBooks.map((book) => {
             const seconds = sumSegmentSeconds(segments.filter((segment) => segment.book_id === book.id));
-            const progress = book.page_count ? Math.min(100, Math.round((book.current_page / book.page_count) * 100)) : null;
+            const progress = book.status === 'finished' ? 100 : book.page_count ? Math.min(100, Math.round((book.current_page / book.page_count) * 100)) : null;
             const tile = displayMode === 'tiles';
             return (
               <View key={book.id} style={{ width: tile ? '48%' : '100%', gap: tile ? 3 : 7 }}>
@@ -200,11 +200,15 @@ export default function LibraryScreen() {
                     </View>
                     <View style={{ flex: 1, justifyContent: 'flex-end', gap: tile ? 5 : 7 }}>
                       {!tile ? <Text style={{ color: colors.accentLight, fontFamily: fonts.body, fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>{statusLabels[book.status].toUpperCase()}</Text> : null}
-                      {book.page_count ? (
+                      {book.page_count !== null || book.status === 'finished' ? (
                         <>
-                          <Text style={{ color: colors.textMuted, fontFamily: fonts.mono, fontSize: 9 }}>PAGE {book.current_page} / {book.page_count}</Text>
+                          <Text style={{ color: colors.textMuted, fontFamily: fonts.mono, fontSize: 9 }}>
+                            {book.status === 'finished'
+                              ? book.page_count === null ? 'FINISHED' : `PAGE ${book.page_count} / ${book.page_count}`
+                              : `PAGE ${book.current_page} / ${book.page_count}`}
+                          </Text>
                           <View style={{ height: 4, borderRadius: 5, backgroundColor: colors.border, overflow: 'hidden' }}>
-                            <View style={{ height: 4, width: `${progress}%`, backgroundColor: colors.accent }} />
+                            <View style={{ height: 4, width: `${progress ?? 0}%`, backgroundColor: colors.accent }} />
                           </View>
                         </>
                       ) : null}

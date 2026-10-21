@@ -67,7 +67,7 @@ export default function BookDetailScreen() {
     ]);
     setBook(nextBook);
     if (nextBook) {
-      setCurrentPageDraft(String(nextBook.current_page));
+      setCurrentPageDraft(String(nextBook.status === 'finished' && nextBook.page_count !== null ? nextBook.page_count : nextBook.current_page));
       setPageCountDraft(nextBook.page_count === null ? '' : String(nextBook.page_count));
       setTitleDraft(nextBook.title);
       setAuthorDraft(nextBook.author ?? '');
@@ -238,6 +238,13 @@ export default function BookDetailScreen() {
     );
   }
 
+  const displayPage = book.status === 'finished' && book.page_count !== null ? book.page_count : book.current_page;
+  const progressPercent = book.status === 'finished'
+    ? 100
+    : book.page_count === null
+      ? null
+      : Math.min(100, Math.round((book.current_page / book.page_count) * 100));
+
   return (
     <Page>
       <View style={{ gap: 10 }}>
@@ -309,22 +316,24 @@ export default function BookDetailScreen() {
         <View style={{ gap: 5 }}>
           <Eyebrow>Reading progress</Eyebrow>
           <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 21, fontWeight: '700' }}>
-            {book.page_count === null
-              ? `Page ${book.current_page}`
-              : `Page ${book.current_page} of ${book.page_count}`}
+            {book.status === 'finished'
+              ? book.page_count === null ? 'Finished' : `Page ${displayPage} of ${book.page_count}`
+              : book.page_count === null ? `Page ${book.current_page}` : `Page ${displayPage} of ${book.page_count}`}
           </Text>
           <Text style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 }}>
-            {book.page_count === null
-              ? 'Open Library has no page total for this edition.'
-              : `${Math.round((book.current_page / book.page_count) * 100)}% complete · ${Math.max(0, book.page_count - book.current_page)} pages to go`}
+            {book.status === 'finished'
+              ? book.page_count === null ? 'Marked finished · page total unknown.' : '100% complete'
+              : book.page_count === null
+                ? 'Open Library has no page total for this edition.'
+                : `${progressPercent}% complete · ${Math.max(0, book.page_count - book.current_page)} pages to go`}
           </Text>
         </View>
-        {book.page_count !== null ? (
+        {progressPercent !== null ? (
           <View style={{ height: 7, borderRadius: 8, backgroundColor: colors.border, overflow: 'hidden' }}>
             <View
               style={{
                 height: 7,
-                width: Math.min(100, Math.round((book.current_page / book.page_count) * 100)) + '%',
+                width: `${progressPercent}%`,
                 borderRadius: 8,
                 backgroundColor: colors.accent,
               }}

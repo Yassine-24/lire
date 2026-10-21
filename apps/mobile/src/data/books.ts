@@ -85,7 +85,7 @@ export async function createBook(
   const author = input.author?.trim() || null;
   if (!title) throw new Error('Add a title before saving.');
   const pageCount = input.pageCount ?? null;
-  const currentPage = input.currentPage ?? 0;
+  const currentPage = input.status === 'finished' && pageCount !== null ? pageCount : input.currentPage ?? 0;
   if (!Number.isSafeInteger(currentPage) || currentPage < 0) {
     throw new Error('Current page must be a whole number of zero or more.');
   }
@@ -142,7 +142,9 @@ export async function updateBookProgress(
 
   await withAppTransaction(db, async (transaction) => {
     await transaction.runAsync(
-      'UPDATE books SET current_page = ?, page_count = ?, updated_at = ? WHERE id = ?',
+      "UPDATE books SET current_page = CASE WHEN status = 'finished' AND ? IS NOT NULL THEN ? ELSE ? END, page_count = ?, updated_at = ? WHERE id = ?",
+      input.pageCount,
+      input.pageCount,
       input.currentPage,
       input.pageCount,
       new Date().toISOString(),
@@ -224,7 +226,8 @@ export async function updateBookStatus(
     );
     const restarted = previous?.status === 'finished' && status === 'reading';
     await transaction.runAsync(
-      "UPDATE books SET status = ?, started_at = CASE WHEN ? = 1 THEN ? WHEN ? = 'reading' AND started_at IS NULL THEN ? ELSE started_at END, finished_at = CASE WHEN ? = 'finished' THEN COALESCE(finished_at, ?) ELSE NULL END, updated_at = ? WHERE id = ?",
+      "UPDATE books SET status = ?, current_page = CASE WHEN ? = 'finished' AND page_count IS NOT NULL THEN page_count ELSE current_page END, started_at = CASE WHEN ? = 1 THEN ? WHEN ? = 'reading' AND started_at IS NULL THEN ? ELSE started_at END, finished_at = CASE WHEN ? = 'finished' THEN COALESCE(finished_at, ?) ELSE NULL END, updated_at = ? WHERE id = ?",
+      status,
       status,
       restarted ? 1 : 0,
       now,

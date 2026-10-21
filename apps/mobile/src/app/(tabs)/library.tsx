@@ -166,39 +166,39 @@ export default function LibraryScreen() {
           />
         </Card>
       ) : (
-        <View style={{ gap: 12, flexDirection: displayMode === 'tiles' ? 'row' : 'column', flexWrap: displayMode === 'tiles' ? 'wrap' : 'nowrap' }}>
+        <View style={{ gap: displayMode === 'tiles' ? 8 : 12, flexDirection: displayMode === 'tiles' ? 'row' : 'column', flexWrap: displayMode === 'tiles' ? 'wrap' : 'nowrap' }}>
           {visibleBooks.map((book) => {
             const seconds = sumSegmentSeconds(segments.filter((segment) => segment.book_id === book.id));
             const progress = book.page_count ? Math.min(100, Math.round((book.current_page / book.page_count) * 100)) : null;
             const tile = displayMode === 'tiles';
             return (
-              <View key={book.id} style={{ width: tile ? '47%' : '100%', gap: 7 }}>
+              <View key={book.id} style={{ width: tile ? '48%' : '100%', gap: tile ? 3 : 7 }}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`${book.title}, ${statusLabels[book.status]}`}
                   onPress={() => router.push({ pathname: '/book/[id]', params: { id: book.id } })}
                   style={({ pressed }) => ({
-                    minHeight: tile ? 228 : 112,
-                    borderRadius: 20,
+                    minHeight: tile ? 188 : 112,
+                    borderRadius: tile ? 17 : 20,
                     backgroundColor: colors.surface,
                     borderWidth: 1,
                     borderColor: colors.border,
-                    padding: tile ? 13 : 14,
+                    padding: tile ? 10 : 14,
                     flexDirection: tile ? 'column' : 'row',
-                    gap: tile ? 11 : 13,
+                    gap: tile ? 8 : 13,
                     opacity: pressed ? 0.82 : 1,
                   })}
                 >
-                  <View style={{ flexDirection: tile ? 'column' : 'row', alignItems: tile ? 'stretch' : 'center', gap: 11, flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
-                      <BookCover title={book.title} uri={book.cover_url} width={tile ? 67 : 48} height={tile ? 92 : 66} />
-                      <View style={{ flex: 1, gap: 5 }}>
-                        <Text numberOfLines={2} style={{ color: colors.text, fontFamily: fonts.display, fontSize: tile ? 15 : 17, lineHeight: tile ? 20 : 23, fontWeight: '700' }}>{book.title}</Text>
+                  <View style={{ flexDirection: tile ? 'column' : 'row', alignItems: tile ? 'stretch' : 'center', gap: tile ? 8 : 11, flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: tile ? 8 : 11 }}>
+                      <BookCover title={book.title} uri={book.cover_url} width={tile ? 58 : 48} height={tile ? 80 : 66} />
+                      <View style={{ flex: 1, gap: tile ? 3 : 5 }}>
+                        <Text numberOfLines={2} style={{ color: colors.text, fontFamily: fonts.display, fontSize: tile ? 14 : 17, lineHeight: tile ? 18 : 23, fontWeight: '700' }}>{book.title}</Text>
                         <Text numberOfLines={1} style={{ color: colors.textMuted, fontFamily: fonts.body, fontSize: 11 }}>{book.author || 'Author not added'}</Text>
                         {tile ? <Text style={{ color: colors.accentLight, fontFamily: fonts.body, fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>{statusLabels[book.status].toUpperCase()}</Text> : null}
                       </View>
                     </View>
-                    <View style={{ flex: 1, justifyContent: 'flex-end', gap: 7 }}>
+                    <View style={{ flex: 1, justifyContent: 'flex-end', gap: tile ? 5 : 7 }}>
                       {!tile ? <Text style={{ color: colors.accentLight, fontFamily: fonts.body, fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>{statusLabels[book.status].toUpperCase()}</Text> : null}
                       {book.page_count ? (
                         <>
@@ -216,7 +216,7 @@ export default function LibraryScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`Remove ${book.title} from your library`}
                   onPress={() => askToRemove(book)}
-                  style={({ pressed }) => ({ alignSelf: tile ? 'flex-end' : 'flex-start', paddingHorizontal: 8, paddingVertical: 3, opacity: pressed ? 0.65 : 1 })}
+                  style={({ pressed }) => ({ alignSelf: tile ? 'flex-end' : 'flex-start', paddingHorizontal: 8, paddingVertical: tile ? 1 : 3, opacity: pressed ? 0.65 : 1 })}
                 >
                   <Text style={{ color: colors.danger, fontFamily: fonts.body, fontSize: 10, fontWeight: '700' }}>Remove</Text>
                 </Pressable>
